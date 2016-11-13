@@ -328,8 +328,8 @@ int main(int argc, char* argv[])
     right = (rank + 1) % size;
     left = (rank == 0) ? (rank + size - 1) : (rank - 1);
     
-    sendbuf = (double*)malloc(sizeof(double) * NSPEEDS);
-    recvbuf = (double*)malloc(sizeof(double) * NSPEEDS);
+    sendbuf = (double*)malloc(sizeof(double) * NSPEEDS * local_ncols);
+    recvbuf = (double*)malloc(sizeof(double) * NSPEEDS * local_ncols);
     
     sendbuf_obs = malloc(sizeof(int));
     recvbuf_obs = malloc(sizeof(int));
@@ -365,147 +365,186 @@ int main(int argc, char* argv[])
         tic = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
     }
     
-for (tt = 0; tt < params.maxIters; tt++)
-{
-    if(rank == size - 1) {
-        ii = local_nrows - 1;
-        for (jj=0;jj<local_ncols;jj++)
-        {
-            if (!loc_obstacles[(local_nrows-2)*local_ncols + jj]
-                && (loc_cells[ii][jj].speeds[3] - w3) > 0.0
-                && (loc_cells[ii][jj].speeds[6] - w4) > 0.0
-                && (loc_cells[ii][jj].speeds[7] - w4) > 0.0)
+    for (tt = 0; tt < params.maxIters; tt++)
+    {
+        if(rank == size - 1) {
+            ii = local_nrows - 1;
+            for (jj=0;jj<local_ncols;jj++)
             {
-                loc_cells[ii][jj].speeds[1] += w3;
-                loc_cells[ii][jj].speeds[5] += w4;
-                loc_cells[ii][jj].speeds[8] += w4;
-                loc_cells[ii][jj].speeds[3] -= w3;
-                loc_cells[ii][jj].speeds[6] -= w4;
-                loc_cells[ii][jj].speeds[7] -= w4;
+                if (!loc_obstacles[(local_nrows-2)*local_ncols + jj]
+                    && (loc_cells[ii][jj].speeds[3] - w3) > 0.0
+                    && (loc_cells[ii][jj].speeds[6] - w4) > 0.0
+                    && (loc_cells[ii][jj].speeds[7] - w4) > 0.0)
+                {
+                    loc_cells[ii][jj].speeds[1] += w3;
+                    loc_cells[ii][jj].speeds[5] += w4;
+                    loc_cells[ii][jj].speeds[8] += w4;
+                    loc_cells[ii][jj].speeds[3] -= w3;
+                    loc_cells[ii][jj].speeds[6] -= w4;
+                    loc_cells[ii][jj].speeds[7] -= w4;
+                }
             }
         }
-    }
-    for(jj=0;jj<local_ncols;jj++) {
-        memcpy(sendbuf, &loc_cells[1][jj].speeds, sizeof(double)*NSPEEDS);
-        MPI_Sendrecv(sendbuf, NSPEEDS, MPI_DOUBLE, left, tag,
-                     recvbuf, NSPEEDS, MPI_DOUBLE, right, tag,
-                     MPI_COMM_WORLD, &status);
-        memcpy(&loc_cells[local_nrows+1][jj].speeds, recvbuf, sizeof(double)*NSPEEDS);
-    }
-    
-    for(jj=0;jj<local_ncols;jj++) {
-        memcpy(sendbuf, &loc_cells[local_nrows][jj].speeds, sizeof(double)*NSPEEDS);
-        MPI_Sendrecv(sendbuf, NSPEEDS, MPI_DOUBLE, right, tag,
-                     recvbuf, NSPEEDS, MPI_DOUBLE, left, tag,
-                     MPI_COMM_WORLD, &status);
-        memcpy(&loc_cells[0][jj].speeds, recvbuf, sizeof(double)*NSPEEDS);
-    }
-    
-    loc_u = 0.0;
-    loc_cells_count = 0;
-    tot_cells = 0;
-    tot_u = 0.0;
-    
-    for (ii = 1; ii<local_nrows+1; ii++){
+
         for(jj=0;jj<local_ncols;jj++) {
-            double* tmp_speed = loc_tmp_cells[ii][jj].speeds;
-            
-            int y_n = ii + 1;
-            int x_e = (jj == local_ncols -1) ? 0 : (jj + 1);
-            int y_s = ii - 1;
-            int x_w = (jj == 0) ? (jj + local_ncols - 1) : (jj - 1);;
-            
-            tmp_speed[0] = loc_cells[ii][jj].speeds[0];
-            tmp_speed[1] = loc_cells[ii][x_w].speeds[1];
-            tmp_speed[2] = loc_cells[y_s][jj].speeds[2];
-            tmp_speed[3] = loc_cells[ii][x_e].speeds[3];
-            tmp_speed[4] = loc_cells[y_n][jj].speeds[4];
-            tmp_speed[5] = loc_cells[y_s][x_w].speeds[5];
-            tmp_speed[6] = loc_cells[y_s][x_e].speeds[6];
-            tmp_speed[7] = loc_cells[y_n][x_e].speeds[7];
-            tmp_speed[8] = loc_cells[y_n][x_w].speeds[8];
+            *(sendbuf+jj*NSPEEDS) = loc_cells[1][jj].speeds[0];
+            *(sendbuf+jj*NSPEEDS + 1) = loc_cells[1][jj].speeds[1];
+            *(sendbuf+jj*NSPEEDS + 2) = loc_cells[1][jj].speeds[2];
+            *(sendbuf+jj*NSPEEDS + 3) = loc_cells[1][jj].speeds[3];
+            *(sendbuf+jj*NSPEEDS + 4) = loc_cells[1][jj].speeds[4];
+            *(sendbuf+jj*NSPEEDS + 5) = loc_cells[1][jj].speeds[5];
+            *(sendbuf+jj*NSPEEDS + 6) = loc_cells[1][jj].speeds[6];
+            *(sendbuf+jj*NSPEEDS + 7) = loc_cells[1][jj].speeds[7];
+            *(sendbuf+jj*NSPEEDS + 8) = loc_cells[1][jj].speeds[8];
         }
-    }
-    
-    
-    for (ii = 1; ii<local_nrows + 1; ii++){
+        MPI_Sendrecv(sendbuf, NSPEEDS*local_ncols, MPI_DOUBLE, left, tag,
+                     recvbuf, NSPEEDS*local_ncols, MPI_DOUBLE, right, tag,
+                     MPI_COMM_WORLD, &status);
+        
         for(jj=0;jj<local_ncols;jj++) {
-            
-            double* current_speed = loc_cells[ii][jj].speeds;
-            double* tmp_speed = loc_tmp_cells[ii][jj].speeds;
-            if (!loc_obstacles[(ii - 1)*local_ncols + jj])
-            {
-                double u_x = (tmp_speed[1]
-                              + tmp_speed[5]
-                              + tmp_speed[8]
-                              - (tmp_speed[3]
-                                 + tmp_speed[6]
-                                 + tmp_speed[7]))
-                / (tmp_speed[0] + tmp_speed[1] + tmp_speed[2] + tmp_speed[3] + tmp_speed[4] + tmp_speed[5] + tmp_speed[6] + tmp_speed[7] + tmp_speed[8]);
+            loc_cells[local_nrows+1][jj].speeds[0] = recvbuf[jj*NSPEEDS];
+            loc_cells[local_nrows+1][jj].speeds[1] = recvbuf[jj*NSPEEDS + 1];
+            loc_cells[local_nrows+1][jj].speeds[2] = recvbuf[jj*NSPEEDS + 2];
+            loc_cells[local_nrows+1][jj].speeds[3] = recvbuf[jj*NSPEEDS + 3];
+            loc_cells[local_nrows+1][jj].speeds[4] = recvbuf[jj*NSPEEDS + 4];
+            loc_cells[local_nrows+1][jj].speeds[5] = recvbuf[jj*NSPEEDS + 5];
+            loc_cells[local_nrows+1][jj].speeds[6] = recvbuf[jj*NSPEEDS + 6];
+            loc_cells[local_nrows+1][jj].speeds[7] = recvbuf[jj*NSPEEDS + 7];
+            loc_cells[local_nrows+1][jj].speeds[8] = recvbuf[jj*NSPEEDS + 8];
+        }
+        
+        for(jj=0;jj<local_ncols;jj++) {
+            *(sendbuf+jj*NSPEEDS) = loc_cells[local_nrows][jj].speeds[0];
+            *(sendbuf+jj*NSPEEDS + 1) = loc_cells[local_nrows][jj].speeds[1];
+            *(sendbuf+jj*NSPEEDS + 2) = loc_cells[local_nrows][jj].speeds[2];
+            *(sendbuf+jj*NSPEEDS + 3) = loc_cells[local_nrows][jj].speeds[3];
+            *(sendbuf+jj*NSPEEDS + 4) = loc_cells[local_nrows][jj].speeds[4];
+            *(sendbuf+jj*NSPEEDS + 5) = loc_cells[local_nrows][jj].speeds[5];
+            *(sendbuf+jj*NSPEEDS + 6) = loc_cells[local_nrows][jj].speeds[6];
+            *(sendbuf+jj*NSPEEDS + 7) = loc_cells[local_nrows][jj].speeds[7];
+            *(sendbuf+jj*NSPEEDS + 8) = loc_cells[local_nrows][jj].speeds[8];
+        }
+        MPI_Sendrecv(sendbuf, NSPEEDS*local_ncols, MPI_DOUBLE, right, tag,
+                     recvbuf, NSPEEDS*local_ncols, MPI_DOUBLE, left, tag,
+                     MPI_COMM_WORLD, &status);
+        
+        for(jj=0;jj<local_ncols;jj++) {
+            loc_cells[0][jj].speeds[0] = recvbuf[jj*NSPEEDS];
+            loc_cells[0][jj].speeds[1] = recvbuf[jj*NSPEEDS + 1];
+            loc_cells[0][jj].speeds[2] = recvbuf[jj*NSPEEDS + 2];
+            loc_cells[0][jj].speeds[3] = recvbuf[jj*NSPEEDS + 3];
+            loc_cells[0][jj].speeds[4] = recvbuf[jj*NSPEEDS + 4];
+            loc_cells[0][jj].speeds[5] = recvbuf[jj*NSPEEDS + 5];
+            loc_cells[0][jj].speeds[6] = recvbuf[jj*NSPEEDS + 6];
+            loc_cells[0][jj].speeds[7] = recvbuf[jj*NSPEEDS + 7];
+            loc_cells[0][jj].speeds[8] = recvbuf[jj*NSPEEDS + 8];
+        }
+        
+        loc_u = 0.0;
+        loc_cells_count = 0;
+        tot_cells = 0;
+        tot_u = 0.0;
+        
+        for (ii = 1; ii<local_nrows+1; ii++){
+            for(jj=0;jj<local_ncols;jj++) {
+                double* tmp_speed = loc_tmp_cells[ii][jj].speeds;
                 
-                double u_y = (tmp_speed[2]
-                              + tmp_speed[5]
-                              + tmp_speed[6]
-                              - (tmp_speed[4]
-                                 + tmp_speed[7]
-                                 + tmp_speed[8]))
-                / (tmp_speed[0] + tmp_speed[1] + tmp_speed[2] + tmp_speed[3] + tmp_speed[4] + tmp_speed[5] + tmp_speed[6] + tmp_speed[7] + tmp_speed[8]);
+                int y_n = ii + 1;
+                int x_e = (jj == local_ncols -1) ? 0 : (jj + 1);
+                int y_s = ii - 1;
+                int x_w = (jj == 0) ? (jj + local_ncols - 1) : (jj - 1);;
                 
-                
-                double u = u_x*u_x + u_y*u_y;
-                double local_density_mult = u * (two_c_sq);
-                double w1_loc = (w1 * (tmp_speed[0] + tmp_speed[1] + tmp_speed[2] + tmp_speed[3] + tmp_speed[4] + tmp_speed[5] + tmp_speed[6] + tmp_speed[7] + tmp_speed[8]));
-                double w2_loc = w1_loc/4.0;
-                
-                
-                *(current_speed) = tmp_speed[0] + params.omega * ((w0* (tmp_speed[0] + tmp_speed[1] + tmp_speed[2] + tmp_speed[3] + tmp_speed[4] + tmp_speed[5] + tmp_speed[6] + tmp_speed[7] + tmp_speed[8])
-                                                                   * (1.0 - local_density_mult)) - tmp_speed[0]);
-                *(current_speed+1) = tmp_speed[1] + params.omega * ((w1_loc * (1.0 + u_x * c_sq
-                                                                               + (u_x * u_x) * (two_c_sq_c_sq)
-                                                                               - local_density_mult)) - tmp_speed[1]);
-                *(current_speed+2) = tmp_speed[2] + params.omega * ((w1_loc * (1.0 + u_y * c_sq
-                                                                               + (u_y * u_y) * (two_c_sq_c_sq)
-                                                                               - local_density_mult)) - tmp_speed[2]);
-                *(current_speed+3) = tmp_speed[3] + params.omega * ((w1_loc * (1.0 + (-u_x) * c_sq
-                                                                               + ((-u_x) * (-u_x)) * (two_c_sq_c_sq)
-                                                                               - local_density_mult)) - tmp_speed[3]);
-                *(current_speed+4) = tmp_speed[4] + params.omega * ((w1_loc * (1.0 + (-u_y) * c_sq
-                                                                               + ((-u_y) * (-u_y)) * (two_c_sq_c_sq)
-                                                                               - local_density_mult)) - tmp_speed[4]);
-                *(current_speed+5) = tmp_speed[5] + params.omega * ((w2_loc * (1.0 + (u_x + u_y) * c_sq
-                                                                               + ((u_x + u_y) * (u_x + u_y)) * (two_c_sq_c_sq)
-                                                                               - local_density_mult)) - tmp_speed[5]);
-                *(current_speed+6) = tmp_speed[6] + params.omega * ((w2_loc * (1.0 + (- u_x + u_y) * c_sq
-                                                                               + ((- u_x + u_y) * (- u_x + u_y)) * (two_c_sq_c_sq)
-                                                                               - local_density_mult)) - tmp_speed[6]);
-                *(current_speed+7) = tmp_speed[7] + params.omega * ((w2_loc * (1.0 + (- u_x - u_y) * c_sq
-                                                                               + ((- u_x - u_y) * (- u_x - u_y)) * (two_c_sq_c_sq)
-                                                                               - local_density_mult)) - tmp_speed[7]);
-                *(current_speed+8) = tmp_speed[8] + params.omega * ((w2_loc * (1.0 + ( u_x - u_y) * c_sq
-                                                                               + (( u_x - u_y) * ( u_x - u_y)) * (two_c_sq_c_sq)
-                                                                               - local_density_mult)) - tmp_speed[8]);
-                loc_u += sqrt(u);
-                //printf(" %d index: %f\n", (ii - 1)*params.nx + jj +rank*local_ncols*local_nrows, sqrt(u));
-            }else {
-                
-                *(current_speed+1) = tmp_speed[3];
-                *(current_speed+2) = tmp_speed[4];
-                *(current_speed+3) = tmp_speed[1];
-                *(current_speed+4) = tmp_speed[2];
-                *(current_speed+5) = tmp_speed[7];
-                *(current_speed+6) = tmp_speed[8];
-                *(current_speed+7) = tmp_speed[5];
-                *(current_speed+8) = tmp_speed[6];
-                loc_cells_count++;
+                tmp_speed[0] = loc_cells[ii][jj].speeds[0];
+                tmp_speed[1] = loc_cells[ii][x_w].speeds[1];
+                tmp_speed[2] = loc_cells[y_s][jj].speeds[2];
+                tmp_speed[3] = loc_cells[ii][x_e].speeds[3];
+                tmp_speed[4] = loc_cells[y_n][jj].speeds[4];
+                tmp_speed[5] = loc_cells[y_s][x_w].speeds[5];
+                tmp_speed[6] = loc_cells[y_s][x_e].speeds[6];
+                tmp_speed[7] = loc_cells[y_n][x_e].speeds[7];
+                tmp_speed[8] = loc_cells[y_n][x_w].speeds[8];
+                //printf(" %d index: %f\n", (ii - 1)*params.nx + jj +rank*local_ncols*local_nrows, tmp_speed[0]);
             }
         }
-    }
-    
-    MPI_Reduce(&loc_cells_count, &tot_cells, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
-    MPI_Reduce(&loc_u, &tot_u, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-    
-    if (rank == 0)
-        av_vels[tt] = tot_u / (double)(params.ny*params.nx-tot_cells);
+        
+        
+        for (ii = 1; ii<local_nrows + 1; ii++){
+            for(jj=0;jj<local_ncols;jj++) {
+                
+                double* current_speed = loc_cells[ii][jj].speeds;
+                double* tmp_speed = loc_tmp_cells[ii][jj].speeds;
+                if (!loc_obstacles[(ii - 1)*local_ncols + jj])
+                {
+                    double u_x = (tmp_speed[1]
+                                  + tmp_speed[5]
+                                  + tmp_speed[8]
+                                  - (tmp_speed[3]
+                                     + tmp_speed[6]
+                                     + tmp_speed[7]))
+                    / (tmp_speed[0] + tmp_speed[1] + tmp_speed[2] + tmp_speed[3] + tmp_speed[4] + tmp_speed[5] + tmp_speed[6] + tmp_speed[7] + tmp_speed[8]);
+                    
+                    double u_y = (tmp_speed[2]
+                                  + tmp_speed[5]
+                                  + tmp_speed[6]
+                                  - (tmp_speed[4]
+                                     + tmp_speed[7]
+                                     + tmp_speed[8]))
+                    / (tmp_speed[0] + tmp_speed[1] + tmp_speed[2] + tmp_speed[3] + tmp_speed[4] + tmp_speed[5] + tmp_speed[6] + tmp_speed[7] + tmp_speed[8]);
+                    
+                    
+                    double u = u_x*u_x + u_y*u_y;
+                    double local_density_mult = u * (two_c_sq);
+                    double w1_loc = (w1 * (tmp_speed[0] + tmp_speed[1] + tmp_speed[2] + tmp_speed[3] + tmp_speed[4] + tmp_speed[5] + tmp_speed[6] + tmp_speed[7] + tmp_speed[8]));
+                    double w2_loc = w1_loc/4.0;
+                    
+                    
+                    *(current_speed) = tmp_speed[0] + params.omega * ((w0* (tmp_speed[0] + tmp_speed[1] + tmp_speed[2] + tmp_speed[3] + tmp_speed[4] + tmp_speed[5] + tmp_speed[6] + tmp_speed[7] + tmp_speed[8])
+                                                                       * (1.0 - local_density_mult)) - tmp_speed[0]);
+                    *(current_speed+1) = tmp_speed[1] + params.omega * ((w1_loc * (1.0 + u_x * c_sq
+                                                                                   + (u_x * u_x) * (two_c_sq_c_sq)
+                                                                                   - local_density_mult)) - tmp_speed[1]);
+                    *(current_speed+2) = tmp_speed[2] + params.omega * ((w1_loc * (1.0 + u_y * c_sq
+                                                                                   + (u_y * u_y) * (two_c_sq_c_sq)
+                                                                                   - local_density_mult)) - tmp_speed[2]);
+                    *(current_speed+3) = tmp_speed[3] + params.omega * ((w1_loc * (1.0 + (-u_x) * c_sq
+                                                                                   + ((-u_x) * (-u_x)) * (two_c_sq_c_sq)
+                                                                                   - local_density_mult)) - tmp_speed[3]);
+                    *(current_speed+4) = tmp_speed[4] + params.omega * ((w1_loc * (1.0 + (-u_y) * c_sq
+                                                                                   + ((-u_y) * (-u_y)) * (two_c_sq_c_sq)
+                                                                                   - local_density_mult)) - tmp_speed[4]);
+                    *(current_speed+5) = tmp_speed[5] + params.omega * ((w2_loc * (1.0 + (u_x + u_y) * c_sq
+                                                                                   + ((u_x + u_y) * (u_x + u_y)) * (two_c_sq_c_sq)
+                                                                                   - local_density_mult)) - tmp_speed[5]);
+                    *(current_speed+6) = tmp_speed[6] + params.omega * ((w2_loc * (1.0 + (- u_x + u_y) * c_sq
+                                                                                   + ((- u_x + u_y) * (- u_x + u_y)) * (two_c_sq_c_sq)
+                                                                                   - local_density_mult)) - tmp_speed[6]);
+                    *(current_speed+7) = tmp_speed[7] + params.omega * ((w2_loc * (1.0 + (- u_x - u_y) * c_sq
+                                                                                   + ((- u_x - u_y) * (- u_x - u_y)) * (two_c_sq_c_sq)
+                                                                                   - local_density_mult)) - tmp_speed[7]);
+                    *(current_speed+8) = tmp_speed[8] + params.omega * ((w2_loc * (1.0 + ( u_x - u_y) * c_sq
+                                                                                   + (( u_x - u_y) * ( u_x - u_y)) * (two_c_sq_c_sq)
+                                                                                   - local_density_mult)) - tmp_speed[8]);
+                    loc_u += sqrt(u);
+                }else {
+                    
+                    *(current_speed+1) = tmp_speed[3];
+                    *(current_speed+2) = tmp_speed[4];
+                    *(current_speed+3) = tmp_speed[1];
+                    *(current_speed+4) = tmp_speed[2];
+                    *(current_speed+5) = tmp_speed[7];
+                    *(current_speed+6) = tmp_speed[8];
+                    *(current_speed+7) = tmp_speed[5];
+                    *(current_speed+8) = tmp_speed[6];
+                    loc_cells_count++;
+                }
+            }
+        }
+        
+        MPI_Reduce(&loc_cells_count, &tot_cells, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+        MPI_Reduce(&loc_u, &tot_u, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+        
+        if (rank == 0)
+            av_vels[tt] = tot_u / (double)(params.ny*params.nx-tot_cells);
     }
     
     if(rank ==0) {
@@ -546,14 +585,14 @@ for (tt = 0; tt < params.maxIters; tt++)
     }
     
     if (rank == 0) {
-        
-                for(tt=0; tt<params.maxIters; tt++){
-        #ifdef DEBUG
-                    printf("==timestep: %d==\n", tt);
-                    printf("av velocity: %.12E\n", av_vels[tt]);
-                    printf("tot density: %.12E\n", total_density(params, total_cells_grid));
-        #endif
-                }
+        //
+        for(tt=0; tt<params.maxIters; tt++){
+#ifdef DEBUG
+            printf("==timestep: %d==\n", tt);
+            printf("av velocity: %.12E\n", av_vels[tt]);
+            printf("tot density: %.12E\n", total_density(params, total_cells_grid));
+#endif
+        }
         printf("==done==\n");
         printf("Reynolds number:\t\t%.12E\n", calc_reynolds(params, total_cells_grid, total_obstacles_grid));
         printf("Elapsed time:\t\t\t%.6lf (s)\n", toc - tic);
