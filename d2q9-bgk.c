@@ -612,11 +612,11 @@ int main(int argc, char* argv[])
     if (rank == 0) {
         //
         for(tt=0; tt<params.maxIters; tt++){
-            //#ifdef DEBUG
+            #ifdef DEBUG
             printf("==timestep: %d==\n", tt);
             printf("av velocity: %.12E\n", av_vels[tt]);
             printf("tot density: %.12E\n", total_density(params, total_cells_grid));
-            //#endif
+            #endif
         }
         printf("==done==\n");
         printf("Reynolds number:\t\t%.12E\n", calc_reynolds(params, total_cells_grid, total_obstacles_grid));
