@@ -3,7 +3,7 @@
 EXE=d2q9-bgk
 
 CC=mpicc
-CFLAGS= -std=c99 -Wall -O3 -DDEBUG
+CFLAGS= -g -std=c99 -O3 -DDEBUG
 LIBS = -lm
 
 FINAL_STATE_FILE=./final_state.dat
