@@ -432,12 +432,6 @@ int main(int argc, char* argv[])
             memcpy(&loc_cells[ii][0].speeds, recvbuf, sizeof(double)*NSPEEDS);
         }
         
-        //    for (ii = 0; ii<local_nrows; ii++){
-        //        for(jj=1;jj<local_ncols + 1;jj++) {
-        //            int y_s = (ii == 0) ? (ii + local_nrows - 1) : (ii - 1);
-        //            printf(" %d index: %f\n", ii*params.nx + jj - 1 + rank*local_ncols, loc_cells[y_s][jj].speeds[2]);
-        //        }
-        //    }
         loc_u = 0.0;
         loc_cells_count = 0;
         tot_cells = 0;
