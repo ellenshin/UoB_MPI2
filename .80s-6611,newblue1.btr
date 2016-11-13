@@ -1,0 +1,4 @@
+
+:6611 terminated with signal 11 at PC=2aaaabfc77cb SP=7fffffffc948.  Backtrace:
+/lib64/libc.so.6(memcpy+0x15b)[0x2aaaabfc77cb]
+[0x40230d]
