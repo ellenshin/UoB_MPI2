@@ -448,7 +448,7 @@ int main(int argc, char* argv[])
                 double* tmp_speed = loc_tmp_cells[ii][jj].speeds;
                 /* determine indices of axis-direction neighbours
                  ** respecting periodic boundary conditions (wrap around) */
-                int y_n = (ii + 1)%local_nrows;
+                int y_n = (ii == local_nrows -1) ? 0 : (ii+1);
                 int x_e = jj + 1;
                 int y_s = (ii == 0) ? (ii + local_nrows - 1) : (ii - 1);
                 int x_w = jj - 1;
