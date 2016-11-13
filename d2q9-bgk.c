@@ -320,34 +320,6 @@ int main(int argc, char* argv[])
     
     /* and close the file */
     fclose(fp);
-    
-    /*
-     ** Allocate memory.
-     **
-     ** Remember C is pass-by-value, so we need to
-     ** pass pointers into the initialise function.
-     **
-     ** NB we are allocating a 1D array, so that the
-     ** memory will be contiguous.  We still want to
-     ** index this memory as if it were a (row major
-     ** ordered) 2D array, however.  We will perform
-     ** some arithmetic using the row and column
-     ** coordinates, inside the square brackets, when
-     ** we want to access elements of this array.
-     **
-     ** Note also that we are using a structure to
-     ** hold an array of 'speeds'.  We will allocate
-     ** a 1D array of these structs.
-     */
-    // printf("I got here");
-    /* main grid */
-    /* open the obstacle data file */
-    
-    /* and close the file */
-    /*
-     ** allocate space to hold a record of the avarage velocities computed
-     ** at each timestep
-     */
     av_vels = (double*)malloc(sizeof(double) * params.maxIters);
     
     /////////////////////////////////////////////////////////////////////////////////////////
@@ -438,17 +410,13 @@ int main(int argc, char* argv[])
         tot_u = 0.0;
         for (ii = 0; ii<local_nrows; ii++){
             for(jj=1;jj<local_ncols + 1;jj++) {
-                //int index = ii * params.nx + jj;
                 double* tmp_speed = loc_tmp_cells[ii][jj].speeds;
-                /* determine indices of axis-direction neighbours
-                 ** respecting periodic boundary conditions (wrap around) */
+
                 int y_n = (ii == local_nrows -1) ? 0 : (ii+1);
                 int x_e = jj + 1;
                 int y_s = (ii == 0) ? (ii + local_nrows - 1) : (ii - 1);
                 int x_w = jj - 1;
-                /* propagate densities to neighbouring cells, following
-                 ** appropriate directions of travel and writing into
-                 ** scratch space grid */
+                
                 tmp_speed[0] = loc_cells[ii][jj].speeds[0];
                 tmp_speed[1] = loc_cells[ii][x_w].speeds[1];
                 tmp_speed[2] = loc_cells[y_s][jj].speeds[2];
@@ -468,21 +436,6 @@ int main(int argc, char* argv[])
                 double* tmp_speed = loc_tmp_cells[ii][jj].speeds;
                 if (!loc_obstacles[ii*local_ncols + jj - 1])
                 {
-                    /* compute local density total */
-                    
-                    //double local_density = 0.0;
-                    
-                    
-                    
-                    //int kk;
-                    //                    for (kk = 0; kk < NSPEEDS; kk++)
-                    //                    {
-                    //                        local_density += tmp_speed[kk];
-                    //                    }
-                    
-                    //local_density = (tmp_speed[0] + tmp_speed[1] + tmp_speed[2] + tmp_speed[3] + tmp_speed[4] + tmp_speed[5] + tmp_speed[6] + tmp_speed[7] + tmp_speed[8]);
-                    
-                    /* compute x velocity component */
                     double u_x = (tmp_speed[1]
                                   + tmp_speed[5]
                                   + tmp_speed[8]
@@ -490,8 +443,7 @@ int main(int argc, char* argv[])
                                      + tmp_speed[6]
                                      + tmp_speed[7]))
                     / (tmp_speed[0] + tmp_speed[1] + tmp_speed[2] + tmp_speed[3] + tmp_speed[4] + tmp_speed[5] + tmp_speed[6] + tmp_speed[7] + tmp_speed[8]);
-                    //                printf("%f ", (current_speed[0] + current_speed[1] + current_speed[2] + current_speed[3] + current_speed[4] + current_speed[5] + current_speed[6] + current_speed[7] + current_speed[8]));
-                    /* compute y velocity component */
+
                     double u_y = (tmp_speed[2]
                                   + tmp_speed[5]
                                   + tmp_speed[6]
@@ -499,13 +451,7 @@ int main(int argc, char* argv[])
                                      + tmp_speed[7]
                                      + tmp_speed[8]))
                     / (tmp_speed[0] + tmp_speed[1] + tmp_speed[2] + tmp_speed[3] + tmp_speed[4] + tmp_speed[5] + tmp_speed[6] + tmp_speed[7] + tmp_speed[8]);
-                    //                for(ii= 0; ii< params.ny; ii++) {
-                    //                    for(jj= 0; jj< params.nx; jj++) {
-                    //                        double* current_speed = cells[ii*params.nx + jj].speeds;
-                    //                        printf("%f ", (current_speed[0] + current_speed[1] + current_speed[2] + current_speed[3] + current_speed[4] + current_speed[5] + current_speed[6] + current_speed[7] + current_speed[8]));
-                    //                    }
-                    //                }
-                    //printf("%f ", u_y);
+
                     
                     double u = u_x*u_x + u_y*u_y;
                     double local_density_mult = u * (two_c_sq);
@@ -538,9 +484,7 @@ int main(int argc, char* argv[])
                                                                                    - local_density_mult)) - tmp_speed[7]);
                     *(current_speed+8) = tmp_speed[8] + params.omega * ((w2_loc * (1.0 + ( u_x - u_y) * c_sq
                                                                                    + (( u_x - u_y) * ( u_x - u_y)) * (two_c_sq_c_sq)
-                                                                                   - local_density_mult)) - tmp_speed[8]);                    //local_density = 0.0;
-                    
-                    //printf(" %d index: %f\n", ii*params.nx + jj - 1 + rank*local_ncols, sqrt(u));
+                                                                                   - local_density_mult)) - tmp_speed[8]);
                     loc_u += sqrt(u);
                     
                 }else {
@@ -563,8 +507,8 @@ int main(int argc, char* argv[])
         
         if (rank == 0)
             av_vels[tt] = tot_u / (double)(params.ny*params.nx-tot_cells);
-        
     }
+    
     if(rank ==0) {
         gettimeofday(&timstr, NULL);
         toc = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
