@@ -128,7 +128,6 @@ int main(int argc, char* argv[])
     char*    paramfile = NULL;    /* name of the input parameter file */
     char*    obstaclefile = NULL; /* name of a the input obstacle file */
     t_param  params;              /* struct to hold parameter values */
-    t_speed* loc_cells_1D = NULL;
     t_speed* loc_cells = NULL;
     t_speed* loc_tmp_cells = NULL;
     int*     loc_obstacles = NULL;    /* grid indicating which cells are blocked */
@@ -236,8 +235,8 @@ int main(int argc, char* argv[])
     int loc_dimention = local_ncols * local_nrows;
     int speed_ncols = NSPEEDS * local_ncols;
     //printf("rows: %d, cols: %d", local_nrows, local_ncols);
-    loc_cells_1D = (t_speed*)malloc(sizeof(t_speed) * (loc_dimention));
-    if (loc_cells_1D == NULL) die("cannot allocate memory for cells", __LINE__, __FILE__);
+    //    loc_cells_1D = (t_speed*)malloc(sizeof(t_speed) * (loc_dimention));
+    //    if (loc_cells_1D == NULL) die("cannot allocate memory for cells", __LINE__, __FILE__);
     
     if(rank == 0) {
         malloc(sizeof(int) * (params.ny * params.nx));
@@ -247,7 +246,7 @@ int main(int argc, char* argv[])
     //    for(ii=0;ii<local_nrows+2;ii++) {
     //        loc_cells[ii] = (t_speed*)malloc(sizeof(t_speed) * local_ncols);
     //    }
-    
+    if (loc_cells == NULL) die("cannot allocate memory for cells", __LINE__, __FILE__);
     loc_tmp_cells = (t_speed*)malloc(sizeof(t_speed) * (local_nrows+2) * local_ncols);
     //    for(ii=0;ii<local_nrows+2;ii++) {
     //        loc_tmp_cells[ii] = (t_speed*)malloc(sizeof(t_speed) * (local_ncols));
