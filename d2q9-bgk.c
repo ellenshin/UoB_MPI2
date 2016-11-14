@@ -361,6 +361,17 @@ int main(int argc, char* argv[])
     double w4 = params.density * params.accel / 36.0;
     
     int tt;
+    t_speed *tmp_pointer_1 = loc_cells+local_ncols;
+    double *buf_pointer_1 = sendbuf;
+    
+    t_speed *tmp_pointer_2 = loc_cells + (local_nrows+1)*local_ncols;
+    double *buf_pointer_2 = recvbuf;
+    
+    t_speed *tmp_pointer_3 = loc_cells+local_nrows*local_ncols;
+    double *buf_pointer_3 = sendbuf;
+    
+    t_speed *tmp_pointer_4 = loc_cells+local_ncols;
+    double *buf_pointer_4 = recvbuf;
     if(rank == 0) {
         gettimeofday(&timstr, NULL);
         tic = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
@@ -387,22 +398,22 @@ int main(int argc, char* argv[])
             }
         }
         
-        
         for(jj=0;jj<local_ncols;jj++) {
-            *(sendbuf+jj*NSPEEDS + 1) = loc_cells[local_ncols + jj].speeds[1];
-            *(sendbuf+jj*NSPEEDS + 2) = loc_cells[local_ncols + jj].speeds[2];
-            *(sendbuf+jj*NSPEEDS + 3) = loc_cells[local_ncols + jj].speeds[3];
-            *(sendbuf+jj*NSPEEDS + 4) = loc_cells[local_ncols + jj].speeds[4];
-            *(sendbuf+jj*NSPEEDS + 5) = loc_cells[local_ncols + jj].speeds[5];
-            *(sendbuf+jj*NSPEEDS + 6) = loc_cells[local_ncols + jj].speeds[6];
-            *(sendbuf+jj*NSPEEDS + 7) = loc_cells[local_ncols + jj].speeds[7];
-            *(sendbuf+jj*NSPEEDS + 8) = loc_cells[local_ncols + jj].speeds[8];
+            t_speed tmp_t = *tmp_pointer_1;
+            memcpy(buf_pointer_1, &tmp_t.speeds, sizeof(double)*NSPEEDS);
+            tmp_pointer_1++;
+            buf_pointer_1 += 9;
         }
+        
+        tmp_pointer_1 -= jj;
+        buf_pointer_1 -= NSPEEDS*local_ncols;
+        
         MPI_Sendrecv(sendbuf, speed_ncols, MPI_DOUBLE, left, tag,
                      recvbuf, speed_ncols, MPI_DOUBLE, right, tag,
                      MPI_COMM_WORLD, &status);
         
         for(jj=0;jj<local_ncols;jj++) {
+            //t_speed tmp_t = *(loc_cells + (local_nrows+1)*local_ncols + jj);
             loc_cells[(local_nrows+1)*local_ncols + jj].speeds[0] = recvbuf[jj*NSPEEDS];
             loc_cells[(local_nrows+1)*local_ncols + jj].speeds[1] = recvbuf[jj*NSPEEDS + 1];
             loc_cells[(local_nrows+1)*local_ncols + jj].speeds[2] = recvbuf[jj*NSPEEDS + 2];
@@ -412,19 +423,32 @@ int main(int argc, char* argv[])
             loc_cells[(local_nrows+1)*local_ncols + jj].speeds[6] = recvbuf[jj*NSPEEDS + 6];
             loc_cells[(local_nrows+1)*local_ncols + jj].speeds[7] = recvbuf[jj*NSPEEDS + 7];
             loc_cells[(local_nrows+1)*local_ncols + jj].speeds[8] = recvbuf[jj*NSPEEDS + 8];
+            //memcpy(&tmp_t.speeds, buf_pointer_2, sizeof(double)*NSPEEDS);
+            //tmp_pointer_2++;
+//            buf_pointer_2 += 9;
         }
+        //tmp_pointer_2 -= jj;
+        //buf_pointer_2 -= NSPEEDS*local_ncols;
+        
+//        for(jj=0;jj<local_ncols;jj++) {
+//            t_speed tmp_t = *tmp_pointer_2;
+//            memcpy(&tmp_t.speeds, buf_pointer_2, sizeof(double)*NSPEEDS);
+//            tmp_pointer_2++;
+//            buf_pointer_2 += 9;
+//        }
+//        tmp_pointer_2 -= jj;
+//        buf_pointer_2 -= NSPEEDS*local_ncols;
         
         for(jj=0;jj<local_ncols;jj++) {
-            *(sendbuf+jj*NSPEEDS) = loc_cells[local_nrows*local_ncols + jj].speeds[0];
-            *(sendbuf+jj*NSPEEDS + 1) = loc_cells[local_nrows*local_ncols + jj].speeds[1];
-            *(sendbuf+jj*NSPEEDS + 2) = loc_cells[local_nrows*local_ncols + jj].speeds[2];
-            *(sendbuf+jj*NSPEEDS + 3) = loc_cells[local_nrows*local_ncols + jj].speeds[3];
-            *(sendbuf+jj*NSPEEDS + 4) = loc_cells[local_nrows*local_ncols + jj].speeds[4];
-            *(sendbuf+jj*NSPEEDS + 5) = loc_cells[local_nrows*local_ncols + jj].speeds[5];
-            *(sendbuf+jj*NSPEEDS + 6) = loc_cells[local_nrows*local_ncols + jj].speeds[6];
-            *(sendbuf+jj*NSPEEDS + 7) = loc_cells[local_nrows*local_ncols + jj].speeds[7];
-            *(sendbuf+jj*NSPEEDS + 8) = loc_cells[local_nrows*local_ncols + jj].speeds[8];
+            t_speed tmp_t = *tmp_pointer_3;
+            memcpy(buf_pointer_3, &tmp_t.speeds, sizeof(double)*NSPEEDS);
+            tmp_pointer_3++;
+            buf_pointer_3 += 9;
         }
+        
+        tmp_pointer_3 -= jj;
+        buf_pointer_3 -= NSPEEDS*local_ncols;
+        
         MPI_Sendrecv(sendbuf, speed_ncols, MPI_DOUBLE, right, tag,
                      recvbuf, speed_ncols, MPI_DOUBLE, left, tag,
                      MPI_COMM_WORLD, &status);
@@ -440,6 +464,7 @@ int main(int argc, char* argv[])
             loc_cells[jj].speeds[7] = recvbuf[jj*NSPEEDS + 7];
             loc_cells[jj].speeds[8] = recvbuf[jj*NSPEEDS + 8];
         }
+        
         
         loc_u = 0.0;
         loc_cells_count = 0;
