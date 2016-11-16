@@ -168,6 +168,9 @@ int main(int argc, char* argv[])
     double *sendbuf;       /* buffer to hold values to send */
     double *recvbuf;       /* buffer to hold received values */
     
+    t_speed *sendbuf_loc;       /* buffer to hold values to send */
+    t_speed *recvbuf_loc;       /* buffer to hold received values */
+    
     int* sendbuf_obs;       /* buffer to hold values to send */
     int* recvbuf_obs;       /* buffer to hold received values */
     
@@ -342,6 +345,9 @@ int main(int argc, char* argv[])
     sendbuf = (double*)malloc(sizeof(double) * speed_ncols);
     recvbuf = (double*)malloc(sizeof(double) * speed_ncols);
     
+    sendbuf_loc = (t_speed*)malloc(sizeof(t_speed) * speed_ncols);
+    recvbuf_loc = (t_speed*)malloc(sizeof(t_speed) * speed_ncols);
+    
     sendbuf_obs = (int*)malloc(sizeof(int) * loc_dimention);
     recvbuf_obs = (int*)malloc(sizeof(int) * loc_dimention);
     
@@ -417,57 +423,68 @@ int main(int argc, char* argv[])
         }
 
         for(jj=0;jj<local_ncols;jj++) {
-            *(sendbuf+jj*NSPEEDS) = loc_cells[1][jj].speed_0;
-            *(sendbuf+jj*NSPEEDS + 1) = loc_cells[1][jj].speed_1;
-            *(sendbuf+jj*NSPEEDS + 2) = loc_cells[1][jj].speed_2;
-            *(sendbuf+jj*NSPEEDS + 3) = loc_cells[1][jj].speed_3;
-            *(sendbuf+jj*NSPEEDS + 4) = loc_cells[1][jj].speed_4;
-            *(sendbuf+jj*NSPEEDS + 5) = loc_cells[1][jj].speed_5;
-            *(sendbuf+jj*NSPEEDS + 6) = loc_cells[1][jj].speed_6;
-            *(sendbuf+jj*NSPEEDS + 7) = loc_cells[1][jj].speed_7;
-            *(sendbuf+jj*NSPEEDS + 8) = loc_cells[1][jj].speed_8;
+//            *(sendbuf+jj*NSPEEDS) = loc_cells[1][jj].speed_0;
+//            *(sendbuf+jj*NSPEEDS + 1) = loc_cells[1][jj].speed_1;
+//            *(sendbuf+jj*NSPEEDS + 2) = loc_cells[1][jj].speed_2;
+//            *(sendbuf+jj*NSPEEDS + 3) = loc_cells[1][jj].speed_3;
+//            *(sendbuf+jj*NSPEEDS + 4) = loc_cells[1][jj].speed_4;
+//            *(sendbuf+jj*NSPEEDS + 5) = loc_cells[1][jj].speed_5;
+//            *(sendbuf+jj*NSPEEDS + 6) = loc_cells[1][jj].speed_6;
+//            *(sendbuf+jj*NSPEEDS + 7) = loc_cells[1][jj].speed_7;
+//            *(sendbuf+jj*NSPEEDS + 8) = loc_cells[1][jj].speed_8;
+            *(sendbuf_loc + jj) = loc_cells[1][jj];
         }
-        MPI_Sendrecv(sendbuf, speed_ncols, MPI_DOUBLE, left, tag,
-                     recvbuf, speed_ncols, MPI_DOUBLE, right, tag,
+//        MPI_Sendrecv(sendbuf, speed_ncols, MPI_DOUBLE, left, tag,
+//                     recvbuf, speed_ncols, MPI_DOUBLE, right, tag,
+//                     MPI_COMM_WORLD, &status);
+        
+        MPI_Sendrecv(sendbuf_loc, local_ncols, MPI_T_SPEED, left, tag,
+                     recvbuf_loc, local_ncols, MPI_T_SPEED, right, tag,
                      MPI_COMM_WORLD, &status);
         
         for(jj=0;jj<local_ncols;jj++) {
-            loc_cells[local_nrows+1][jj].speed_0 = recvbuf[jj*NSPEEDS];
-            loc_cells[local_nrows+1][jj].speed_1 = recvbuf[jj*NSPEEDS + 1];
-            loc_cells[local_nrows+1][jj].speed_2 = recvbuf[jj*NSPEEDS + 2];
-            loc_cells[local_nrows+1][jj].speed_3 = recvbuf[jj*NSPEEDS + 3];
-            loc_cells[local_nrows+1][jj].speed_4 = recvbuf[jj*NSPEEDS + 4];
-            loc_cells[local_nrows+1][jj].speed_5 = recvbuf[jj*NSPEEDS + 5];
-            loc_cells[local_nrows+1][jj].speed_6 = recvbuf[jj*NSPEEDS + 6];
-            loc_cells[local_nrows+1][jj].speed_7 = recvbuf[jj*NSPEEDS + 7];
-            loc_cells[local_nrows+1][jj].speed_8 = recvbuf[jj*NSPEEDS + 8];
+//            loc_cells[local_nrows+1][jj].speed_0 = recvbuf[jj*NSPEEDS];
+//            loc_cells[local_nrows+1][jj].speed_1 = recvbuf[jj*NSPEEDS + 1];
+//            loc_cells[local_nrows+1][jj].speed_2 = recvbuf[jj*NSPEEDS + 2];
+//            loc_cells[local_nrows+1][jj].speed_3 = recvbuf[jj*NSPEEDS + 3];
+//            loc_cells[local_nrows+1][jj].speed_4 = recvbuf[jj*NSPEEDS + 4];
+//            loc_cells[local_nrows+1][jj].speed_5 = recvbuf[jj*NSPEEDS + 5];
+//            loc_cells[local_nrows+1][jj].speed_6 = recvbuf[jj*NSPEEDS + 6];
+//            loc_cells[local_nrows+1][jj].speed_7 = recvbuf[jj*NSPEEDS + 7];
+//            loc_cells[local_nrows+1][jj].speed_8 = recvbuf[jj*NSPEEDS + 8];
+            
+            loc_cells[local_nrows+1][jj] = recvbuf_loc[jj];
         }
         
         for(jj=0;jj<local_ncols;jj++) {
-            *(sendbuf+jj*NSPEEDS) = loc_cells[local_nrows][jj].speed_0;
-            *(sendbuf+jj*NSPEEDS + 1) = loc_cells[local_nrows][jj].speed_1;
-            *(sendbuf+jj*NSPEEDS + 2) = loc_cells[local_nrows][jj].speed_2;
-            *(sendbuf+jj*NSPEEDS + 3) = loc_cells[local_nrows][jj].speed_3;
-            *(sendbuf+jj*NSPEEDS + 4) = loc_cells[local_nrows][jj].speed_4;
-            *(sendbuf+jj*NSPEEDS + 5) = loc_cells[local_nrows][jj].speed_5;
-            *(sendbuf+jj*NSPEEDS + 6) = loc_cells[local_nrows][jj].speed_6;
-            *(sendbuf+jj*NSPEEDS + 7) = loc_cells[local_nrows][jj].speed_7;
-            *(sendbuf+jj*NSPEEDS + 8) = loc_cells[local_nrows][jj].speed_8;
+//            *(sendbuf+jj*NSPEEDS) = loc_cells[local_nrows][jj].speed_0;
+//            *(sendbuf+jj*NSPEEDS + 1) = loc_cells[local_nrows][jj].speed_1;
+//            *(sendbuf+jj*NSPEEDS + 2) = loc_cells[local_nrows][jj].speed_2;
+//            *(sendbuf+jj*NSPEEDS + 3) = loc_cells[local_nrows][jj].speed_3;
+//            *(sendbuf+jj*NSPEEDS + 4) = loc_cells[local_nrows][jj].speed_4;
+//            *(sendbuf+jj*NSPEEDS + 5) = loc_cells[local_nrows][jj].speed_5;
+//            *(sendbuf+jj*NSPEEDS + 6) = loc_cells[local_nrows][jj].speed_6;
+//            *(sendbuf+jj*NSPEEDS + 7) = loc_cells[local_nrows][jj].speed_7;
+//            *(sendbuf+jj*NSPEEDS + 8) = loc_cells[local_nrows][jj].speed_8;
+            *(sendbuf_loc + jj) = loc_cells[local_nrows][jj];
         }
-        MPI_Sendrecv(sendbuf, speed_ncols, MPI_DOUBLE, right, tag,
-                     recvbuf, speed_ncols, MPI_DOUBLE, left, tag,
+        
+        MPI_Sendrecv(sendbuf_loc, local_ncols, MPI_T_SPEED, right, tag,
+                     recvbuf_loc, local_ncols, MPI_T_SPEED, left, tag,
                      MPI_COMM_WORLD, &status);
         
         for(jj=0;jj<local_ncols;jj++) {
-            loc_cells[0][jj].speed_0 = recvbuf[jj*NSPEEDS];
-            loc_cells[0][jj].speed_1 = recvbuf[jj*NSPEEDS + 1];
-            loc_cells[0][jj].speed_2 = recvbuf[jj*NSPEEDS + 2];
-            loc_cells[0][jj].speed_3 = recvbuf[jj*NSPEEDS + 3];
-            loc_cells[0][jj].speed_4 = recvbuf[jj*NSPEEDS + 4];
-            loc_cells[0][jj].speed_5 = recvbuf[jj*NSPEEDS + 5];
-            loc_cells[0][jj].speed_6 = recvbuf[jj*NSPEEDS + 6];
-            loc_cells[0][jj].speed_7 = recvbuf[jj*NSPEEDS + 7];
-            loc_cells[0][jj].speed_8 = recvbuf[jj*NSPEEDS + 8];
+//            loc_cells[0][jj].speed_0 = recvbuf[jj*NSPEEDS];
+//            loc_cells[0][jj].speed_1 = recvbuf[jj*NSPEEDS + 1];
+//            loc_cells[0][jj].speed_2 = recvbuf[jj*NSPEEDS + 2];
+//            loc_cells[0][jj].speed_3 = recvbuf[jj*NSPEEDS + 3];
+//            loc_cells[0][jj].speed_4 = recvbuf[jj*NSPEEDS + 4];
+//            loc_cells[0][jj].speed_5 = recvbuf[jj*NSPEEDS + 5];
+//            loc_cells[0][jj].speed_6 = recvbuf[jj*NSPEEDS + 6];
+//            loc_cells[0][jj].speed_7 = recvbuf[jj*NSPEEDS + 7];
+//            loc_cells[0][jj].speed_8 = recvbuf[jj*NSPEEDS + 8];
+            
+            loc_cells[0][jj] = recvbuf_loc[jj];
         }
         
 
