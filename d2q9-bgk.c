@@ -174,6 +174,8 @@ int main(int argc, char* argv[])
     int* sendbuf_obs;       /* buffer to hold values to send */
     int* recvbuf_obs;       /* buffer to hold received values */
     
+    MPI_Win top_win;
+    MPI_Win bottom_win;
     //double **tmp_u;            /* local temperature grid at time t - 1 */
     //t_speed **tmp_w;            /* local temperature grid at time t     */
     //double *printbuf;      /* buffer to hold values for printing */
@@ -369,6 +371,12 @@ int main(int argc, char* argv[])
     MPI_Type_create_struct(NSPEEDS, blocklengths, offsets, types, &MPI_T_SPEED);
     MPI_Type_commit(&MPI_T_SPEED);
     
+    MPI_Win_create(sendbuf_loc, sizeof(t_speed) * local_ncols, sizeof(t_speed), MPI_INFO_NULL,
+                   MPI_COMM_WORLD, &top_win);
+    MPI_Win_create(recvbuf_loc, sizeof(t_speed) * local_ncols, sizeof(t_speed), MPI_INFO_NULL,
+                   MPI_COMM_WORLD, &bottom_win);
+    
+    
     if(rank == 0) {
         for(kk = 0; kk<size; kk++) {
             for(ii = 0; ii<local_nrows; ii++) {
@@ -423,71 +431,52 @@ int main(int argc, char* argv[])
         }
 
         for(jj=0;jj<local_ncols;jj++) {
-//            *(sendbuf+jj*NSPEEDS) = loc_cells[1][jj].speed_0;
-//            *(sendbuf+jj*NSPEEDS + 1) = loc_cells[1][jj].speed_1;
-//            *(sendbuf+jj*NSPEEDS + 2) = loc_cells[1][jj].speed_2;
-//            *(sendbuf+jj*NSPEEDS + 3) = loc_cells[1][jj].speed_3;
-//            *(sendbuf+jj*NSPEEDS + 4) = loc_cells[1][jj].speed_4;
-//            *(sendbuf+jj*NSPEEDS + 5) = loc_cells[1][jj].speed_5;
-//            *(sendbuf+jj*NSPEEDS + 6) = loc_cells[1][jj].speed_6;
-//            *(sendbuf+jj*NSPEEDS + 7) = loc_cells[1][jj].speed_7;
-//            *(sendbuf+jj*NSPEEDS + 8) = loc_cells[1][jj].speed_8;
             *(sendbuf_loc + jj) = loc_cells[1][jj];
         }
-//        MPI_Sendrecv(sendbuf, speed_ncols, MPI_DOUBLE, left, tag,
-//                     recvbuf, speed_ncols, MPI_DOUBLE, right, tag,
+        
+        //MPI_Win_lock(MPI_LOCK_EXCLUSIVE, left, 0, top_win);
+        MPI_Win_fence(0,top_win);
+        MPI_Put(sendbuf_loc, local_ncols, MPI_T_SPEED, right, 0, local_ncols, MPI_T_SPEED, top_win);
+        MPI_Win_fence(0,top_win);
+        //MPI_Win_unlock(left, top_win);
+////
+////        MPI_Sendrecv(sendbuf_loc, local_ncols, MPI_T_SPEED, left, tag,
+////                     recvbuf_loc, local_ncols, MPI_T_SPEED, right, tag,
+////                     MPI_COMM_WORLD, &status);
+////        
+        for(jj=0;jj<local_ncols;jj++) {
+            loc_cells[local_nrows+1][jj] = sendbuf_loc[jj];
+        }
+////
+        for(jj=0;jj<local_ncols;jj++) {
+            *(recvbuf_loc + jj) = loc_cells[local_nrows][jj];
+        }
+        //MPI_Win_lock(MPI_LOCK_EXCLUSIVE, right, 0, bottom_win);
+        MPI_Win_fence(0,bottom_win);
+        MPI_Put(recvbuf_loc, local_ncols, MPI_T_SPEED, left, 0, local_ncols, MPI_T_SPEED, bottom_win);
+        MPI_Win_fence(0,bottom_win);
+        //MPI_Win_unlock(right, bottom_win);
+//
+//        MPI_Sendrecv(sendbuf_loc, local_ncols, MPI_T_SPEED, right, tag,
+//                     recvbuf_loc, local_ncols, MPI_T_SPEED, left, tag,
 //                     MPI_COMM_WORLD, &status);
-        
-        MPI_Sendrecv(sendbuf_loc, local_ncols, MPI_T_SPEED, left, tag,
-                     recvbuf_loc, local_ncols, MPI_T_SPEED, right, tag,
-                     MPI_COMM_WORLD, &status);
-        
+//        
         for(jj=0;jj<local_ncols;jj++) {
-//            loc_cells[local_nrows+1][jj].speed_0 = recvbuf[jj*NSPEEDS];
-//            loc_cells[local_nrows+1][jj].speed_1 = recvbuf[jj*NSPEEDS + 1];
-//            loc_cells[local_nrows+1][jj].speed_2 = recvbuf[jj*NSPEEDS + 2];
-//            loc_cells[local_nrows+1][jj].speed_3 = recvbuf[jj*NSPEEDS + 3];
-//            loc_cells[local_nrows+1][jj].speed_4 = recvbuf[jj*NSPEEDS + 4];
-//            loc_cells[local_nrows+1][jj].speed_5 = recvbuf[jj*NSPEEDS + 5];
-//            loc_cells[local_nrows+1][jj].speed_6 = recvbuf[jj*NSPEEDS + 6];
-//            loc_cells[local_nrows+1][jj].speed_7 = recvbuf[jj*NSPEEDS + 7];
-//            loc_cells[local_nrows+1][jj].speed_8 = recvbuf[jj*NSPEEDS + 8];
-            
-            loc_cells[local_nrows+1][jj] = recvbuf_loc[jj];
-        }
-        
-        for(jj=0;jj<local_ncols;jj++) {
-//            *(sendbuf+jj*NSPEEDS) = loc_cells[local_nrows][jj].speed_0;
-//            *(sendbuf+jj*NSPEEDS + 1) = loc_cells[local_nrows][jj].speed_1;
-//            *(sendbuf+jj*NSPEEDS + 2) = loc_cells[local_nrows][jj].speed_2;
-//            *(sendbuf+jj*NSPEEDS + 3) = loc_cells[local_nrows][jj].speed_3;
-//            *(sendbuf+jj*NSPEEDS + 4) = loc_cells[local_nrows][jj].speed_4;
-//            *(sendbuf+jj*NSPEEDS + 5) = loc_cells[local_nrows][jj].speed_5;
-//            *(sendbuf+jj*NSPEEDS + 6) = loc_cells[local_nrows][jj].speed_6;
-//            *(sendbuf+jj*NSPEEDS + 7) = loc_cells[local_nrows][jj].speed_7;
-//            *(sendbuf+jj*NSPEEDS + 8) = loc_cells[local_nrows][jj].speed_8;
-            *(sendbuf_loc + jj) = loc_cells[local_nrows][jj];
-        }
-        
-        MPI_Sendrecv(sendbuf_loc, local_ncols, MPI_T_SPEED, right, tag,
-                     recvbuf_loc, local_ncols, MPI_T_SPEED, left, tag,
-                     MPI_COMM_WORLD, &status);
-        
-        for(jj=0;jj<local_ncols;jj++) {
-//            loc_cells[0][jj].speed_0 = recvbuf[jj*NSPEEDS];
-//            loc_cells[0][jj].speed_1 = recvbuf[jj*NSPEEDS + 1];
-//            loc_cells[0][jj].speed_2 = recvbuf[jj*NSPEEDS + 2];
-//            loc_cells[0][jj].speed_3 = recvbuf[jj*NSPEEDS + 3];
-//            loc_cells[0][jj].speed_4 = recvbuf[jj*NSPEEDS + 4];
-//            loc_cells[0][jj].speed_5 = recvbuf[jj*NSPEEDS + 5];
-//            loc_cells[0][jj].speed_6 = recvbuf[jj*NSPEEDS + 6];
-//            loc_cells[0][jj].speed_7 = recvbuf[jj*NSPEEDS + 7];
-//            loc_cells[0][jj].speed_8 = recvbuf[jj*NSPEEDS + 8];
-            
             loc_cells[0][jj] = recvbuf_loc[jj];
         }
         
-
+//        MPI_Win_lock(MPI_LOCK_EXCLUSIVE, rank, 0, top_win);
+//        MPI_Put(&loc_cells[1], local_ncols, MPI_T_SPEED, left, 0, local_ncols, MPI_T_SPEED, top_win);
+//        MPI_Win_unlock(left, top_win);
+//        
+//        MPI_Win_lock(MPI_LOCK_EXCLUSIVE, rank, 0, bottom_win);
+//        MPI_Put(&loc_cells[local_nrows], local_ncols, MPI_T_SPEED, right, 0, local_ncols, MPI_T_SPEED, top_win);
+//        MPI_Win_unlock(left, bottom_win);
+        
+        
+        
+        //MPI_Win_lock(MPI_LOCK_EXCLUSIVE, rank, 0, bottom_win);
+        
         loc_u = 0.0;
         loc_cells_count = 0;
         tot_cells = 0;
@@ -675,6 +664,9 @@ int main(int argc, char* argv[])
         //finalise(&params, &total_cells_grid, &total_obstacles_grid, &av_vels);
     }
 ////
+//    MPI_Win_free(&top_win);
+//    MPI_Win_free(&bottom_win);
+//    
     MPI_Finalize();
     return EXIT_SUCCESS;
 }
