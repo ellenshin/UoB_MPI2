@@ -434,11 +434,11 @@ int main(int argc, char* argv[])
             *(sendbuf_loc + jj) = loc_cells[1][jj];
         }
         
-        //MPI_Win_lock(MPI_LOCK_EXCLUSIVE, left, 0, top_win);
-        MPI_Win_fence(0,top_win);
-        MPI_Get(sendbuf_loc, local_ncols, MPI_T_SPEED, left, 0, local_ncols, MPI_T_SPEED, top_win);
-        MPI_Win_fence(0,top_win);
-        //MPI_Win_unlock(left, top_win);
+        MPI_Win_lock(MPI_LOCK_EXCLUSIVE, right, 0, top_win);
+        //MPI_Win_fence(0,top_win);
+        MPI_Put(sendbuf_loc, local_ncols, MPI_T_SPEED, right, 0, local_ncols, MPI_T_SPEED, top_win);
+        //MPI_Win_fence(0,top_win);
+        MPI_Win_unlock(right, top_win);
 ////
 ////        MPI_Sendrecv(sendbuf_loc, local_ncols, MPI_T_SPEED, left, tag,
 ////                     recvbuf_loc, local_ncols, MPI_T_SPEED, right, tag,
@@ -451,11 +451,11 @@ int main(int argc, char* argv[])
         for(jj=0;jj<local_ncols;jj++) {
             *(recvbuf_loc + jj) = loc_cells[local_nrows][jj];
         }
-        //MPI_Win_lock(MPI_LOCK_EXCLUSIVE, right, 0, bottom_win);
-        MPI_Win_fence(0,bottom_win);
-        MPI_Get(recvbuf_loc, local_ncols, MPI_T_SPEED, right, 0, local_ncols, MPI_T_SPEED, bottom_win);
-        MPI_Win_fence(0,bottom_win);
-        //MPI_Win_unlock(right, bottom_win);
+        MPI_Win_lock(MPI_LOCK_EXCLUSIVE, left, 0, bottom_win);
+        //MPI_Win_fence(0,bottom_win);
+        MPI_Put(recvbuf_loc, local_ncols, MPI_T_SPEED, left, 0, local_ncols, MPI_T_SPEED, bottom_win);
+        //MPI_Win_fence(0,bottom_win);
+        MPI_Win_unlock(left, bottom_win);
 //
 //        MPI_Sendrecv(sendbuf_loc, local_ncols, MPI_T_SPEED, right, tag,
 //                     recvbuf_loc, local_ncols, MPI_T_SPEED, left, tag,
