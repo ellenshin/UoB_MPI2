@@ -393,7 +393,7 @@ int main(int argc, char* argv[])
         tic = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
     }
     
-    for (tt = 0; tt < 1; tt++)
+    for (tt = 0; tt < params.maxIters; tt++)
     {
         if(rank == size - 1) {
             ii = local_nrows - 1;
@@ -427,22 +427,20 @@ int main(int argc, char* argv[])
             *(sendbuf+jj*NSPEEDS + 7) = loc_cells[1][jj].speed_7;
             *(sendbuf+jj*NSPEEDS + 8) = loc_cells[1][jj].speed_8;
         }
-        
         MPI_Sendrecv(sendbuf, speed_ncols, MPI_DOUBLE, left, tag,
                      recvbuf, speed_ncols, MPI_DOUBLE, right, tag,
                      MPI_COMM_WORLD, &status);
         
         for(jj=0;jj<local_ncols;jj++) {
-            t_speed *cell = &(loc_cells[local_nrows+1][jj]);
-            cell->speed_0 = recvbuf[jj*NSPEEDS];
-            cell->speed_1 = recvbuf[jj*NSPEEDS + 1];
-            cell->speed_2 = recvbuf[jj*NSPEEDS + 2];
-            cell->speed_3 = recvbuf[jj*NSPEEDS + 3];
-            cell->speed_4 = recvbuf[jj*NSPEEDS + 4];
-            cell->speed_5 = recvbuf[jj*NSPEEDS + 5];
-            cell->speed_6 = recvbuf[jj*NSPEEDS + 6];
-            cell->speed_7 = recvbuf[jj*NSPEEDS + 7];
-            cell->speed_8 = recvbuf[jj*NSPEEDS + 8];
+            loc_cells[local_nrows+1][jj].speed_0 = recvbuf[jj*NSPEEDS];
+            loc_cells[local_nrows+1][jj].speed_1 = recvbuf[jj*NSPEEDS + 1];
+            loc_cells[local_nrows+1][jj].speed_2 = recvbuf[jj*NSPEEDS + 2];
+            loc_cells[local_nrows+1][jj].speed_3 = recvbuf[jj*NSPEEDS + 3];
+            loc_cells[local_nrows+1][jj].speed_4 = recvbuf[jj*NSPEEDS + 4];
+            loc_cells[local_nrows+1][jj].speed_5 = recvbuf[jj*NSPEEDS + 5];
+            loc_cells[local_nrows+1][jj].speed_6 = recvbuf[jj*NSPEEDS + 6];
+            loc_cells[local_nrows+1][jj].speed_7 = recvbuf[jj*NSPEEDS + 7];
+            loc_cells[local_nrows+1][jj].speed_8 = recvbuf[jj*NSPEEDS + 8];
         }
         
         for(jj=0;jj<local_ncols;jj++) {
@@ -461,18 +459,17 @@ int main(int argc, char* argv[])
                      MPI_COMM_WORLD, &status);
         
         for(jj=0;jj<local_ncols;jj++) {
-            t_speed *cell = &(loc_cells[0][jj]);
-            cell->speed_0 = recvbuf[jj*NSPEEDS];
-            cell->speed_1 = recvbuf[jj*NSPEEDS + 1];
-            cell->speed_2 = recvbuf[jj*NSPEEDS + 2];
-            cell->speed_3 = recvbuf[jj*NSPEEDS + 3];
-            cell->speed_4 = recvbuf[jj*NSPEEDS + 4];
-            cell->speed_5 = recvbuf[jj*NSPEEDS + 5];
-            cell->speed_6 = recvbuf[jj*NSPEEDS + 6];
-            cell->speed_7 = recvbuf[jj*NSPEEDS + 7];
-            cell->speed_8 = recvbuf[jj*NSPEEDS + 8];
-            
+            loc_cells[0][jj].speed_0 = recvbuf[jj*NSPEEDS];
+            loc_cells[0][jj].speed_1 = recvbuf[jj*NSPEEDS + 1];
+            loc_cells[0][jj].speed_2 = recvbuf[jj*NSPEEDS + 2];
+            loc_cells[0][jj].speed_3 = recvbuf[jj*NSPEEDS + 3];
+            loc_cells[0][jj].speed_4 = recvbuf[jj*NSPEEDS + 4];
+            loc_cells[0][jj].speed_5 = recvbuf[jj*NSPEEDS + 5];
+            loc_cells[0][jj].speed_6 = recvbuf[jj*NSPEEDS + 6];
+            loc_cells[0][jj].speed_7 = recvbuf[jj*NSPEEDS + 7];
+            loc_cells[0][jj].speed_8 = recvbuf[jj*NSPEEDS + 8];
         }
+        
 
         loc_u = 0.0;
         loc_cells_count = 0;
