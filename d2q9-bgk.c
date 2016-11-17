@@ -232,10 +232,11 @@ int main(int argc, char* argv[])
     
     local_nrows = calc_nrows_from_rank(rank, size, params.ny);
     local_ncols = params.nx;
-    int loc_dimention = local_ncols * local_nrows;
+    
+    //int local_nrows * local_ncols = local_ncols * local_nrows;
     int speed_ncols = NSPEEDS * local_ncols;
     //printf("rows: %d, cols: %d", local_nrows, local_ncols);
-    //    loc_cells_1D = (t_speed*)malloc(sizeof(t_speed) * (loc_dimention));
+    //    loc_cells_1D = (t_speed*)malloc(sizeof(t_speed) * (local_nrows * local_ncols));
     //    if (loc_cells_1D == NULL) die("cannot allocate memory for cells", __LINE__, __FILE__);
     
     if(rank == 0) {
@@ -253,7 +254,7 @@ int main(int argc, char* argv[])
     //    }
     
     /* the map of obstacles */
-    loc_obstacles = malloc(sizeof(int) * (loc_dimention));
+    loc_obstacles = malloc(sizeof(int) * (local_nrows * local_ncols));
     
     if(rank ==0){
         total_obstacles_grid = malloc(sizeof(int) * (params.ny * params.nx));
@@ -333,22 +334,44 @@ int main(int argc, char* argv[])
     sendbuf = (double*)malloc(sizeof(double) * speed_ncols);
     recvbuf = (double*)malloc(sizeof(double) * speed_ncols);
     
-    sendbuf_obs = (int*)malloc(sizeof(int) * loc_dimention);
-    recvbuf_obs = (int*)malloc(sizeof(int) * loc_dimention);
+    sendbuf_obs = (int*)malloc(sizeof(int) * local_nrows * local_ncols);
+    recvbuf_obs = (int*)malloc(sizeof(int) * local_nrows * local_ncols);
     
+    int* spec_sendbuf_obs;
     if(rank == 0) {
-        for(kk = 0; kk<size; kk++) {
-            for(ii = 0; ii<local_nrows; ii++) {
+        spec_sendbuf_obs = sendbuf_obs = (int*)malloc(sizeof(int) * (local_nrows + 2) * local_ncols);
+    }
+    if(rank == 0) {
+            total_obstacles_grid[2826] = 0;
+    }
+    
+    if(rank != size -1) {
+        if(rank == 0) {
+            for(kk = 0; kk<size - 1; kk++) {
+                for(ii = 0; ii<local_nrows; ii++) {
+                    for(jj = 0; jj<local_ncols; jj++) {
+                        sendbuf_obs[ii*local_ncols + jj] = total_obstacles_grid[ii*params.nx + jj + kk*local_nrows * local_ncols];
+                    }
+                }
+                
+                MPI_Send(sendbuf_obs,local_nrows * local_ncols,MPI_INT,kk,tag,MPI_COMM_WORLD);
+            }
+        }
+        MPI_Recv(loc_obstacles,local_nrows * local_ncols,MPI_INT,0,tag,MPI_COMM_WORLD,&status);
+    }
+
+    if((rank == 0) || (rank == size - 1)) {
+        if(rank == 0) {
+            for(ii = 0; ii<local_nrows + 2; ii++) {
                 for(jj = 0; jj<local_ncols; jj++) {
-                    sendbuf_obs[ii*local_ncols + jj] = total_obstacles_grid[ii*params.nx + jj + kk*loc_dimention];
+                    spec_sendbuf_obs[ii*local_ncols + jj] = total_obstacles_grid[ii*params.nx + jj + (size - 1)*local_nrows * local_ncols];
                 }
             }
-            
-            MPI_Send(sendbuf_obs,loc_dimention,MPI_INT,kk,tag,MPI_COMM_WORLD);
+            MPI_Send(spec_sendbuf_obs,(local_nrows + 2) * local_ncols,MPI_INT,size - 1,tag,MPI_COMM_WORLD);
+        } else {
+            MPI_Recv(loc_obstacles,local_nrows * local_ncols,MPI_INT,0,tag,MPI_COMM_WORLD,&status);
         }
     }
-    MPI_Recv(loc_obstacles,loc_dimention,MPI_INT,0,tag,MPI_COMM_WORLD,&status);
-    
     const double c_sq = 3.0; /* square of speed of sound */
     const double w0 = 4.0 / 9.0;  /* weighting factor */
     const double w1 = 1.0 / 9.0;  /* weighting factor */
@@ -366,7 +389,7 @@ int main(int argc, char* argv[])
         tic = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
     }
     
-    for (tt = 0; tt < params.maxIters; tt++)
+    for (tt = 0; tt < 1; tt++)
     {
         if(rank == size - 1) {
             ii = local_nrows - 1;
@@ -386,7 +409,7 @@ int main(int argc, char* argv[])
                 }
             }
         }
-        
+    
         
         for(jj=0;jj<local_ncols;jj++) {
             *(sendbuf+jj*NSPEEDS + 1) = loc_cells[local_ncols + jj].speeds[1];
@@ -440,7 +463,7 @@ int main(int argc, char* argv[])
             loc_cells[jj].speeds[7] = recvbuf[jj*NSPEEDS + 7];
             loc_cells[jj].speeds[8] = recvbuf[jj*NSPEEDS + 8];
         }
-        
+
         loc_u = 0.0;
         loc_cells_count = 0;
         tot_cells = 0;
@@ -464,7 +487,7 @@ int main(int argc, char* argv[])
                 tmp_speed[6] = loc_cells[y_s*local_ncols + x_e].speeds[6];
                 tmp_speed[7] = loc_cells[y_n*local_ncols + x_e].speeds[7];
                 tmp_speed[8] = loc_cells[y_n*local_ncols + x_w].speeds[8];
-                //printf(" %d index: %f\n", (ii - 1)*params.nx + jj +rank*local_ncols*local_nrows, tmp_speed[0]);
+                
             }
         }
         
@@ -474,6 +497,7 @@ int main(int argc, char* argv[])
                 
                 double* current_speed = loc_cells[ii*local_ncols + jj].speeds;
                 double* tmp_speed = loc_tmp_cells[ii*local_ncols + jj].speeds;
+                
                 if (!loc_obstacles[(ii - 1)*local_ncols + jj])
                 {
                     double u_x = (tmp_speed[1]
@@ -491,7 +515,6 @@ int main(int argc, char* argv[])
                                      + tmp_speed[7]
                                      + tmp_speed[8]))
                     / (tmp_speed[0] + tmp_speed[1] + tmp_speed[2] + tmp_speed[3] + tmp_speed[4] + tmp_speed[5] + tmp_speed[6] + tmp_speed[7] + tmp_speed[8]);
-                    
                     
                     double u = u_x*u_x + u_y*u_y;
                     double local_density_mult = u * (two_c_sq);
@@ -526,6 +549,11 @@ int main(int argc, char* argv[])
                                                                                    + (( u_x - u_y) * ( u_x - u_y)) * (two_c_sq_c_sq)
                                                                                    - local_density_mult)) - tmp_speed[8]);
                     loc_u += sqrt(u);
+//                    if(rank == size -1) {
+//                        printf(" %d index, %d rank, %d row, %d col : %f\n", (ii - 1)*params.nx + jj +rank*local_ncols*(local_nrows -2), rank, ii - 1, jj, sqrt(u));
+//                    } else {
+//                        printf(" %d index, %d rank, %d row, %d col : %f\n", (ii - 1)*params.nx + jj +rank*local_ncols*(local_nrows),rank, ii - 1, jj, sqrt(u));
+//                    }
                 }else {
                     
                     *(current_speed+1) = tmp_speed[3];
@@ -559,58 +587,101 @@ int main(int argc, char* argv[])
     }
     t_speed* total_cells_grid = NULL;
     
-    //    if(rank != 0) {
-    //        for(ii=0; ii<local_nrows; ii++) {
-    //            for(jj = 0; jj<local_ncols; jj++) {
-    //                loc_cells_1D[ii*local_ncols + jj] = loc_cells[ii + 1][jj];
-    //            }
-    //        }
-    //    }
-    
     if(rank == 0) {
         total_cells_grid = (t_speed*)malloc(((sizeof(t_speed)) * params.nx * params.ny));
     }
     //    //combine all the grids into total_cells_grid
     int index;
     int mult;
-    for(ii = 1; ii<local_nrows+1; ii++) {
-        for(jj=0;jj<local_ncols;jj++) {
-            mult = jj*NSPEEDS;
-            double* loc_speed = loc_cells[ii*local_ncols + jj].speeds;
-            *(sendbuf+mult) = loc_speed[0];
-            *(sendbuf+mult + 1) = loc_speed[1];
-            *(sendbuf+mult + 2) = loc_speed[2];
-            *(sendbuf+mult + 3) = loc_speed[3];
-            *(sendbuf+mult + 4) = loc_speed[4];
-            *(sendbuf+mult + 5) = loc_speed[5];
-            *(sendbuf+mult + 6) = loc_speed[6];
-            *(sendbuf+mult + 7) = loc_speed[7];
-            *(sendbuf+mult + 8) = loc_speed[8];
+    double* tot_speed;
+    double total;
+    if (rank != size - 1) {
+        for(ii = 1; ii<local_nrows+1; ii++) {
+            for(jj=0;jj<local_ncols;jj++) {
+                mult = jj*NSPEEDS;
+                double* loc_speed = loc_cells[ii*local_ncols + jj].speeds;
+                *(sendbuf+mult) = loc_speed[0];
+                *(sendbuf+mult + 1) = loc_speed[1];
+                *(sendbuf+mult + 2) = loc_speed[2];
+                *(sendbuf+mult + 3) = loc_speed[3];
+                *(sendbuf+mult + 4) = loc_speed[4];
+                *(sendbuf+mult + 5) = loc_speed[5];
+                *(sendbuf+mult + 6) = loc_speed[6];
+                *(sendbuf+mult + 7) = loc_speed[7];
+                *(sendbuf+mult + 8) = loc_speed[8];
+//                printf(" %d index, %d rank, %d row, %d col : %f\n", (ii - 1)*params.nx + jj +rank*local_ncols*(local_nrows), rank, ii - 1, jj, loc_speed[0] + loc_speed[1] + loc_speed[2] + loc_speed[3] + loc_speed[4] + loc_speed[5] + loc_speed[6] + loc_speed[7] + loc_speed[8]);
+//                total += loc_speed[0] + loc_speed[1] + loc_speed[2] + loc_speed[3] + loc_speed[4] + loc_speed[5] + loc_speed[6] + loc_speed[7] + loc_speed[8];
+            }
+            MPI_Ssend(sendbuf,speed_ncols,MPI_DOUBLE,0,tag,MPI_COMM_WORLD);
+            
+            if (rank == 0) {
+                for(kk = 0; kk<size-1; kk++) {
+                    MPI_Recv(recvbuf,speed_ncols,MPI_DOUBLE,kk,tag,MPI_COMM_WORLD,&status);
+                    for(jj=0;jj<local_ncols;jj++) {
+                        tot_speed = total_cells_grid[(ii-1)*params.nx + jj +kk * local_nrows * local_ncols].speeds;
+                        mult = jj*NSPEEDS;
+                        tot_speed[0] = recvbuf[mult];
+                        tot_speed[1] = recvbuf[mult + 1];
+                        tot_speed[2] = recvbuf[mult + 2];
+                        tot_speed[3] = recvbuf[mult + 3];
+                        tot_speed[4] = recvbuf[mult + 4];
+                        tot_speed[5] = recvbuf[mult + 5];
+                        tot_speed[6] = recvbuf[mult + 6];
+                        tot_speed[7] = recvbuf[mult + 7];
+                        tot_speed[8] = recvbuf[mult + 8];
+                        total += tot_speed[0] + tot_speed[1] + tot_speed[2] + tot_speed[3] + tot_speed[4] + tot_speed[5] + tot_speed[6] + tot_speed[7] + tot_speed[8];
+                        //printf("%d\n", (ii-1)*params.nx + jj + kk * local_nrows * local_ncols);
+                    }
+                }
+            }
+            
         }
-        MPI_Ssend(sendbuf,speed_ncols,MPI_DOUBLE,0,tag,MPI_COMM_WORLD);
-        
-        if (rank == 0) {
-            for(kk = 0; kk<size; kk++) {
-                MPI_Recv(recvbuf,speed_ncols,MPI_DOUBLE,kk,tag,MPI_COMM_WORLD,&status);
-                for(jj=0;jj<local_ncols;jj++) {
-                    //index = (ii-1)*params.nx + jj +kk*local_ncols*local_nrows;
-                    double* tot_speed = total_cells_grid[(ii-1)*params.nx + jj +kk*loc_dimention].speeds;
-                    mult = jj*NSPEEDS;
-                    tot_speed[0] = recvbuf[mult];
-                    tot_speed[1] = recvbuf[mult + 1];
-                    tot_speed[2] = recvbuf[mult + 2];
-                    tot_speed[3] = recvbuf[mult + 3];
-                    tot_speed[4] = recvbuf[mult + 4];
-                    tot_speed[5] = recvbuf[mult + 5];
-                    tot_speed[6] = recvbuf[mult + 6];
-                    tot_speed[7] = recvbuf[mult + 7];
-                    tot_speed[8] = recvbuf[mult + 8];
+    }
+    if ((rank == size - 1) || (rank == 0)) {
+            if (rank == size - 1) {
+                for(ii = 1; ii<local_nrows+1; ii++) {
+                    for(jj=0;jj<local_ncols;jj++) {
+                        mult = jj*NSPEEDS;
+                        double* loc_speed = loc_cells[ii*local_ncols + jj].speeds;
+                        *(sendbuf+mult) = loc_speed[0];
+                        *(sendbuf+mult + 1) = loc_speed[1];
+                        *(sendbuf+mult + 2) = loc_speed[2];
+                        *(sendbuf+mult + 3) = loc_speed[3];
+                        *(sendbuf+mult + 4) = loc_speed[4];
+                        *(sendbuf+mult + 5) = loc_speed[5];
+                        *(sendbuf+mult + 6) = loc_speed[6];
+                        *(sendbuf+mult + 7) = loc_speed[7];
+                        *(sendbuf+mult + 8) = loc_speed[8];
+//                        printf(" %d index, %d rank, %d row, %d col : %f\n", (ii - 1)*params.nx + jj +rank*local_ncols*(local_nrows-2), rank, ii - 1, jj, loc_speed[0] + loc_speed[1] + loc_speed[2] + loc_speed[3] + loc_speed[4] + loc_speed[5] + loc_speed[6] + loc_speed[7] + loc_speed[8]);
+//                        total += loc_speed[0] + loc_speed[1] + loc_speed[2] + loc_speed[3] + loc_speed[4] + loc_speed[5] + loc_speed[6] + loc_speed[7] + loc_speed[8];
+                    }
+                    MPI_Ssend(sendbuf,speed_ncols,MPI_DOUBLE,0,tag,MPI_COMM_WORLD);
+                }
+            } else {
+                for(ii = 1; ii<local_nrows + 1 + 2; ii++) {
+                    MPI_Recv(recvbuf,speed_ncols,MPI_DOUBLE, size - 1,tag,MPI_COMM_WORLD,&status);
+                    for(jj=0;jj<local_ncols;jj++) {
+                        tot_speed = total_cells_grid[(ii-1)*params.nx + jj + (size - 1) * local_nrows * local_ncols].speeds;
+                        mult = jj*NSPEEDS;
+                        tot_speed[0] = recvbuf[mult];
+                        tot_speed[1] = recvbuf[mult + 1];
+                        tot_speed[2] = recvbuf[mult + 2];
+                        tot_speed[3] = recvbuf[mult + 3];
+                        tot_speed[4] = recvbuf[mult + 4];
+                        tot_speed[5] = recvbuf[mult + 5];
+                        tot_speed[6] = recvbuf[mult + 6];
+                        tot_speed[7] = recvbuf[mult + 7];
+                        tot_speed[8] = recvbuf[mult + 8];
+                       total += tot_speed[0] + tot_speed[1] + tot_speed[2] + tot_speed[3] + tot_speed[4] + tot_speed[5] + tot_speed[6] + tot_speed[7] + tot_speed[8];
+                       // printf("%d\n", (ii-1)*params.nx + jj + (size - 1) * (local_nrows) * local_ncols);
+                    }
+            
                 }
             }
         }
-        
-    }
-    
+    //printf("%f ", total);
+
+//
     if (rank == 0) {
         //
         //        for(tt=0; tt<params.maxIters; tt++){
@@ -628,7 +699,7 @@ int main(int argc, char* argv[])
         write_values(params, total_cells_grid, total_obstacles_grid, av_vels);
         //finalise(&params, &total_cells_grid, &total_obstacles_grid, &av_vels);
     }
-    
+//
     MPI_Finalize();
     return EXIT_SUCCESS;
 }
@@ -684,14 +755,14 @@ double av_velocity(const t_param params, t_speed* cells, int* obstacles)
             double u = u_x*u_x + u_y*u_y;
             tot_u += sqrt(u);
             
-            
+            //printf("%d : %.10f\n", ii, sqrt(u));
         } else
             ++tot_cells;
-        //printf("%d ", current_speed[2]);
-        
+        //printf("%d ", tot);
     }
-    
-    
+    //printf("%d ", tot_cells);
+
+   // printf("%f ", tot_u / (double)(params.ny*params.nx-tot_cells));
     return tot_u / (double)(params.ny*params.nx-tot_cells);
 }
 
@@ -877,7 +948,7 @@ int finalise(const t_param* params, t_speed** cells_ptr,
 double calc_reynolds(const t_param params, t_speed* cells, int* obstacles)
 {
     const double viscosity = 1.0 / 6.0 * (2.0 / params.omega - 1.0);
-    
+    //printf("%.10f\n", av_velocity(params, cells, obstacles));
     return av_velocity(params, cells, obstacles) * params.reynolds_dim / viscosity;
 }
 
