@@ -76,7 +76,7 @@ typedef struct
 /* struct to hold the 'speed' values */
 typedef struct
 {
-    double speeds[NSPEEDS];
+    float speeds[NSPEEDS];
 } t_speed;
 
 /*
@@ -145,7 +145,7 @@ int main(int argc, char* argv[])
     int kk;
     int ii,jj;             /* row and column indices for the grid */
     //int kk;                /* index for looping over ranks */
-    int start_col,end_col; /* rank dependent looping indices */
+    //int start_col,end_col; /* rank dependent looping indices */
     //int iter;              /* index for timestep iterations */
     int rank;              /* the rank of this process */
     int left;              /* the rank of the process to the left */
@@ -155,12 +155,12 @@ int main(int argc, char* argv[])
     MPI_Status status;     /* struct used by MPI_Recv */
     int local_nrows;       /* number of rows apportioned to this rank */
     int local_ncols;       /* number of columns apportioned to this rank */
-    double *sendbuf;       /* buffer to hold values to send */
-    double *recvbuf;       /* buffer to hold received values */
+    float *sendbuf;       /* buffer to hold values to send */
+    float *recvbuf;       /* buffer to hold received values */
     
     //int not_perf = 0;
     int* sendbuf_obs;       /* buffer to hold values to send */
-    int* recvbuf_obs;       /* buffer to hold received values */
+    //int* recvbuf_obs;       /* buffer to hold received values */
     
     int difference = 0;
     //double **tmp_u;            /* local temperature grid at time t - 1 */
@@ -174,10 +174,10 @@ int main(int argc, char* argv[])
     MPI_Comm_size( MPI_COMM_WORLD, &size );
     MPI_Comm_rank( MPI_COMM_WORLD, &rank );
     
-//    if(rank == 0 && params.nx % size != 0) {
-//        if(params.nx % size == 0)
-//            not_perf = 1;
-//    }
+    //    if(rank == 0 && params.nx % size != 0) {
+    //        if(params.nx % size == 0)
+    //            not_perf = 1;
+    //    }
     
     /* parse the command line */
     if (argc != 3)
@@ -254,9 +254,9 @@ int main(int argc, char* argv[])
     //    loc_cells_1D = (t_speed*)malloc(sizeof(t_speed) * (local_nrows * local_ncols));
     //    if (loc_cells_1D == NULL) die("cannot allocate memory for cells", __LINE__, __FILE__);
     
-//    if(rank == 0) {
-//        malloc(sizeof(int) * (params.ny * params.nx));
-//    }
+    //    if(rank == 0) {
+    //        malloc(sizeof(int) * (params.ny * params.nx));
+    //    }
     
     loc_cells = (t_speed*)malloc(sizeof(t_speed) * (local_nrows+2) * local_ncols);
     //    for(ii=0;ii<local_nrows+2;ii++) {
@@ -278,9 +278,9 @@ int main(int argc, char* argv[])
     if (loc_obstacles == NULL) die("cannot allocate column memory for obstacles", __LINE__, __FILE__);
     
     /* initialise densities */
-    double w5 = params.density * 4.0 / 9.0;
-    double w6 = params.density      / 9.0;
-    double w7 = params.density      / 36.0;
+    float w5 = params.density * 4.0 / 9.0;
+    float w6 = params.density      / 9.0;
+    float w7 = params.density      / 36.0;
     
     for (ii = 1; ii < local_nrows + 1; ii++)
     {
@@ -302,13 +302,13 @@ int main(int argc, char* argv[])
         }
     }
     
-//    for (ii = 0; ii < local_nrows; ii++)
-//    {
-//        for (jj = 0; jj < local_ncols; jj++)
-//        {
-//            loc_obstacles[ii*local_ncols + jj] = 0;
-//        }
-//    }
+    //    for (ii = 0; ii < local_nrows; ii++)
+    //    {
+    //        for (jj = 0; jj < local_ncols; jj++)
+    //        {
+    //            loc_obstacles[ii*local_ncols + jj] = 0;
+    //        }
+    //    }
     
     /* open the obstacle data file */
     fp = fopen(obstaclefile, "r");
@@ -356,18 +356,18 @@ int main(int argc, char* argv[])
     right = (rank + 1) % size;
     left = (rank == 0) ? (rank + size - 1) : (rank - 1);
     
-    sendbuf = (double*)malloc(sizeof(double) * speed_ncols);
-    recvbuf = (double*)malloc(sizeof(double) * speed_ncols);
+    sendbuf = (float*)malloc(sizeof(float) * speed_ncols);
+    recvbuf = (float*)malloc(sizeof(float) * speed_ncols);
     
     sendbuf_obs = (int*)malloc(sizeof(int) * local_nrows * local_ncols);
-    recvbuf_obs = (int*)malloc(sizeof(int) * local_nrows * local_ncols);
+    //recvbuf_obs = (int*)malloc(sizeof(int) * local_nrows * local_ncols);
     
     int* spec_sendbuf_obs;
     
     if(rank == 0) {
         spec_sendbuf_obs = sendbuf_obs = (int*)malloc(sizeof(int) * (local_nrows + difference) * local_ncols);
     }
-
+    
     if(rank != size -1) {
         if(rank == 0) {
             for(kk = 0; kk<size - 1; kk++) {
@@ -383,7 +383,7 @@ int main(int argc, char* argv[])
         MPI_Recv(loc_obstacles,local_nrows * local_ncols,MPI_INT,0,tag,MPI_COMM_WORLD,&status);
         //printf("this is ran");
     }
-
+    
     if(size != 1) {
         if((rank == 0) || (rank == size - 1)) {
             if(rank == 0) {
@@ -410,103 +410,108 @@ int main(int argc, char* argv[])
             
             MPI_Send(sendbuf_obs,local_nrows * local_ncols,MPI_INT,kk,tag,MPI_COMM_WORLD);
         }
-    
-    MPI_Recv(loc_obstacles,local_nrows * local_ncols,MPI_INT,0,tag,MPI_COMM_WORLD,&status);
+        
+        MPI_Recv(loc_obstacles,local_nrows * local_ncols,MPI_INT,0,tag,MPI_COMM_WORLD,&status);
     }
-
-    const double c_sq = 3.0; /* square of speed of sound */
-    const double w0 = 4.0 / 9.0;  /* weighting factor */
-    const double w1 = 1.0 / 9.0;  /* weighting factor */
     
-    const double two_c_sq_c_sq = 4.5;
-    const double two_c_sq = 1.5;
+    const float c_sq = 3.0; /* square of speed of sound */
+    const float w0 = 4.0 / 9.0;  /* weighting factor */
+    const float w1 = 1.0 / 9.0;  /* weighting factor */
+    
+    const float two_c_sq_c_sq = 4.5;
+    const float two_c_sq = 1.5;
     
     //const int dimension = params.ny*params.nx;
-    double w3 = params.density * params.accel / 9.0;
-    double w4 = params.density * params.accel / 36.0;
+    float w3 = params.density * params.accel / 9.0;
+    float w4 = params.density * params.accel / 36.0;
     
     int tt;
     if(rank == 0) {
         gettimeofday(&timstr, NULL);
         tic = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
     }
-//    
-    for (tt = 0; tt < 1; tt++)
+    //
+    for (tt = 0; tt < params.maxIters; tt++)
     {
         if(rank == size - 1) {
             ii = local_nrows - 1;
             for (jj=0;jj<local_ncols;jj++)
             {
+                int index = ii*local_ncols + jj;
                 if (!loc_obstacles[(local_nrows-2)*local_ncols + jj]
-                    && (loc_cells[ii*local_ncols + jj].speeds[3] - w3) > 0.0
-                    && (loc_cells[ii*local_ncols + jj].speeds[6] - w4) > 0.0
-                    && (loc_cells[ii*local_ncols + jj].speeds[7] - w4) > 0.0)
+                    && (loc_cells[index].speeds[3] - w3) > 0.0
+                    && (loc_cells[index].speeds[6] - w4) > 0.0
+                    && (loc_cells[index].speeds[7] - w4) > 0.0)
                 {
-                    loc_cells[ii*local_ncols + jj].speeds[1] += w3;
-                    loc_cells[ii*local_ncols + jj].speeds[5] += w4;
-                    loc_cells[ii*local_ncols + jj].speeds[8] += w4;
-                    loc_cells[ii*local_ncols + jj].speeds[3] -= w3;
-                    loc_cells[ii*local_ncols + jj].speeds[6] -= w4;
-                    loc_cells[ii*local_ncols + jj].speeds[7] -= w4;
+                    loc_cells[index].speeds[1] += w3;
+                    loc_cells[index].speeds[5] += w4;
+                    loc_cells[index].speeds[8] += w4;
+                    loc_cells[index].speeds[3] -= w3;
+                    loc_cells[index].speeds[6] -= w4;
+                    loc_cells[index].speeds[7] -= w4;
                 }
             }
         }
-
-
-        for(jj=0;jj<local_ncols;jj++) {
-            *(sendbuf+jj*NSPEEDS) = loc_cells[local_ncols + jj].speeds[0];
-            *(sendbuf+jj*NSPEEDS + 1) = loc_cells[local_ncols + jj].speeds[1];
-            *(sendbuf+jj*NSPEEDS + 2) = loc_cells[local_ncols + jj].speeds[2];
-            *(sendbuf+jj*NSPEEDS + 3) = loc_cells[local_ncols + jj].speeds[3];
-            *(sendbuf+jj*NSPEEDS + 4) = loc_cells[local_ncols + jj].speeds[4];
-            *(sendbuf+jj*NSPEEDS + 5) = loc_cells[local_ncols + jj].speeds[5];
-            *(sendbuf+jj*NSPEEDS + 6) = loc_cells[local_ncols + jj].speeds[6];
-            *(sendbuf+jj*NSPEEDS + 7) = loc_cells[local_ncols + jj].speeds[7];
-            *(sendbuf+jj*NSPEEDS + 8) = loc_cells[local_ncols + jj].speeds[8];
-        }
-        MPI_Sendrecv(sendbuf, speed_ncols, MPI_DOUBLE, left, tag,
-                     recvbuf, speed_ncols, MPI_DOUBLE, right, tag,
+        
+        //        for(jj=0;jj<local_ncols;jj++) {
+        //            *(sendbuf+jj*NSPEEDS) = loc_cells[local_ncols + jj].speeds[0];
+        //            *(sendbuf+jj*NSPEEDS + 1) = loc_cells[local_ncols + jj].speeds[1];
+        //            *(sendbuf+jj*NSPEEDS + 2) = loc_cells[local_ncols + jj].speeds[2];
+        //            *(sendbuf+jj*NSPEEDS + 3) = loc_cells[local_ncols + jj].speeds[3];
+        //            *(sendbuf+jj*NSPEEDS + 4) = loc_cells[local_ncols + jj].speeds[4];
+        //            *(sendbuf+jj*NSPEEDS + 5) = loc_cells[local_ncols + jj].speeds[5];
+        //            *(sendbuf+jj*NSPEEDS + 6) = loc_cells[local_ncols + jj].speeds[6];
+        //            *(sendbuf+jj*NSPEEDS + 7) = loc_cells[local_ncols + jj].speeds[7];
+        //            *(sendbuf+jj*NSPEEDS + 8) = loc_cells[local_ncols + jj].speeds[8];
+        //        }
+        memcpy(sendbuf, loc_cells+local_ncols, sizeof(float) * NSPEEDS * local_ncols);
+        MPI_Sendrecv(sendbuf, speed_ncols, MPI_FLOAT, left, tag,
+                     recvbuf, speed_ncols, MPI_FLOAT, right, tag,
                      MPI_COMM_WORLD, &status);
-//
-        for(jj=0;jj<local_ncols;jj++) {
-            loc_cells[(local_nrows+1)*local_ncols + jj].speeds[0] = recvbuf[jj*NSPEEDS];
-            loc_cells[(local_nrows+1)*local_ncols + jj].speeds[1] = recvbuf[jj*NSPEEDS + 1];
-            loc_cells[(local_nrows+1)*local_ncols + jj].speeds[2] = recvbuf[jj*NSPEEDS + 2];
-            loc_cells[(local_nrows+1)*local_ncols + jj].speeds[3] = recvbuf[jj*NSPEEDS + 3];
-            loc_cells[(local_nrows+1)*local_ncols + jj].speeds[4] = recvbuf[jj*NSPEEDS + 4];
-            loc_cells[(local_nrows+1)*local_ncols + jj].speeds[5] = recvbuf[jj*NSPEEDS + 5];
-            loc_cells[(local_nrows+1)*local_ncols + jj].speeds[6] = recvbuf[jj*NSPEEDS + 6];
-            loc_cells[(local_nrows+1)*local_ncols + jj].speeds[7] = recvbuf[jj*NSPEEDS + 7];
-            loc_cells[(local_nrows+1)*local_ncols + jj].speeds[8] = recvbuf[jj*NSPEEDS + 8];
-        }
-
-        for(jj=0;jj<local_ncols;jj++) {
-            *(sendbuf+jj*NSPEEDS) = loc_cells[local_nrows*local_ncols + jj].speeds[0];
-            *(sendbuf+jj*NSPEEDS + 1) = loc_cells[local_nrows*local_ncols + jj].speeds[1];
-            *(sendbuf+jj*NSPEEDS + 2) = loc_cells[local_nrows*local_ncols + jj].speeds[2];
-            *(sendbuf+jj*NSPEEDS + 3) = loc_cells[local_nrows*local_ncols + jj].speeds[3];
-            *(sendbuf+jj*NSPEEDS + 4) = loc_cells[local_nrows*local_ncols + jj].speeds[4];
-            *(sendbuf+jj*NSPEEDS + 5) = loc_cells[local_nrows*local_ncols + jj].speeds[5];
-            *(sendbuf+jj*NSPEEDS + 6) = loc_cells[local_nrows*local_ncols + jj].speeds[6];
-            *(sendbuf+jj*NSPEEDS + 7) = loc_cells[local_nrows*local_ncols + jj].speeds[7];
-            *(sendbuf+jj*NSPEEDS + 8) = loc_cells[local_nrows*local_ncols + jj].speeds[8];
-        }
-        MPI_Sendrecv(sendbuf, speed_ncols, MPI_DOUBLE, right, tag,
-                     recvbuf, speed_ncols, MPI_DOUBLE, left, tag,
+        //
+        //        for(jj=0;jj<local_ncols;jj++) {
+        //            loc_cells[(local_nrows+1)*local_ncols + jj].speeds[0] = recvbuf[jj*NSPEEDS];
+        //            loc_cells[(local_nrows+1)*local_ncols + jj].speeds[1] = recvbuf[jj*NSPEEDS + 1];
+        //            loc_cells[(local_nrows+1)*local_ncols + jj].speeds[2] = recvbuf[jj*NSPEEDS + 2];
+        //            loc_cells[(local_nrows+1)*local_ncols + jj].speeds[3] = recvbuf[jj*NSPEEDS + 3];
+        //            loc_cells[(local_nrows+1)*local_ncols + jj].speeds[4] = recvbuf[jj*NSPEEDS + 4];
+        //            loc_cells[(local_nrows+1)*local_ncols + jj].speeds[5] = recvbuf[jj*NSPEEDS + 5];
+        //            loc_cells[(local_nrows+1)*local_ncols + jj].speeds[6] = recvbuf[jj*NSPEEDS + 6];
+        //            loc_cells[(local_nrows+1)*local_ncols + jj].speeds[7] = recvbuf[jj*NSPEEDS + 7];
+        //            loc_cells[(local_nrows+1)*local_ncols + jj].speeds[8] = recvbuf[jj*NSPEEDS + 8];
+        //        }
+        memcpy(loc_cells + (local_nrows+1)*local_ncols, recvbuf, sizeof(float) * NSPEEDS * local_ncols);
+        
+        //        for(jj=0;jj<local_ncols;jj++) {
+        //            *(sendbuf+jj*NSPEEDS) = loc_cells[local_nrows*local_ncols + jj].speeds[0];
+        //            *(sendbuf+jj*NSPEEDS + 1) = loc_cells[local_nrows*local_ncols + jj].speeds[1];
+        //            *(sendbuf+jj*NSPEEDS + 2) = loc_cells[local_nrows*local_ncols + jj].speeds[2];
+        //            *(sendbuf+jj*NSPEEDS + 3) = loc_cells[local_nrows*local_ncols + jj].speeds[3];
+        //            *(sendbuf+jj*NSPEEDS + 4) = loc_cells[local_nrows*local_ncols + jj].speeds[4];
+        //            *(sendbuf+jj*NSPEEDS + 5) = loc_cells[local_nrows*local_ncols + jj].speeds[5];
+        //            *(sendbuf+jj*NSPEEDS + 6) = loc_cells[local_nrows*local_ncols + jj].speeds[6];
+        //            *(sendbuf+jj*NSPEEDS + 7) = loc_cells[local_nrows*local_ncols + jj].speeds[7];
+        //            *(sendbuf+jj*NSPEEDS + 8) = loc_cells[local_nrows*local_ncols + jj].speeds[8];
+        //        }
+        memcpy(sendbuf, loc_cells+local_nrows*local_ncols, sizeof(float) * NSPEEDS * local_ncols);
+        MPI_Sendrecv(sendbuf, speed_ncols, MPI_FLOAT, right, tag,
+                     recvbuf, speed_ncols, MPI_FLOAT, left, tag,
                      MPI_COMM_WORLD, &status);
         
-        for(jj=0;jj<local_ncols;jj++) {
-            loc_cells[jj].speeds[0] = recvbuf[jj*NSPEEDS];
-            loc_cells[jj].speeds[1] = recvbuf[jj*NSPEEDS + 1];
-            loc_cells[jj].speeds[2] = recvbuf[jj*NSPEEDS + 2];
-            loc_cells[jj].speeds[3] = recvbuf[jj*NSPEEDS + 3];
-            loc_cells[jj].speeds[4] = recvbuf[jj*NSPEEDS + 4];
-            loc_cells[jj].speeds[5] = recvbuf[jj*NSPEEDS + 5];
-            loc_cells[jj].speeds[6] = recvbuf[jj*NSPEEDS + 6];
-            loc_cells[jj].speeds[7] = recvbuf[jj*NSPEEDS + 7];
-            loc_cells[jj].speeds[8] = recvbuf[jj*NSPEEDS + 8];
-        }
-
+        //        for(jj=0;jj<local_ncols;jj++) {
+        //            loc_cells[jj].speeds[0] = recvbuf[jj*NSPEEDS];
+        //            loc_cells[jj].speeds[1] = recvbuf[jj*NSPEEDS + 1];
+        //            loc_cells[jj].speeds[2] = recvbuf[jj*NSPEEDS + 2];
+        //            loc_cells[jj].speeds[3] = recvbuf[jj*NSPEEDS + 3];
+        //            loc_cells[jj].speeds[4] = recvbuf[jj*NSPEEDS + 4];
+        //            loc_cells[jj].speeds[5] = recvbuf[jj*NSPEEDS + 5];
+        //            loc_cells[jj].speeds[6] = recvbuf[jj*NSPEEDS + 6];
+        //            loc_cells[jj].speeds[7] = recvbuf[jj*NSPEEDS + 7];
+        //            loc_cells[jj].speeds[8] = recvbuf[jj*NSPEEDS + 8];
+        //        }
+        
+        memcpy(loc_cells, recvbuf, sizeof(float) * NSPEEDS * local_ncols);
+        
         loc_u = 0.0;
         loc_cells_count = 0;
         tot_cells = 0;
@@ -514,7 +519,7 @@ int main(int argc, char* argv[])
         
         for (ii = 1; ii<local_nrows+1; ii++){
             for(jj=0;jj<local_ncols;jj++) {
-                double* tmp_speed = loc_tmp_cells[ii*local_ncols + jj].speeds;
+                float* tmp_speed = loc_tmp_cells[ii*local_ncols + jj].speeds;
                 
                 int y_n = ii + 1;
                 int x_e = (jj == local_ncols -1) ? 0 : (jj + 1);
@@ -538,8 +543,8 @@ int main(int argc, char* argv[])
         for (ii = 1; ii<local_nrows + 1; ii++){
             for(jj=0;jj<local_ncols;jj++) {
                 
-                double* current_speed = loc_cells[ii*local_ncols + jj].speeds;
-                double* tmp_speed = loc_tmp_cells[ii*local_ncols + jj].speeds;
+                float* current_speed = loc_cells[ii*local_ncols + jj].speeds;
+                float* tmp_speed = loc_tmp_cells[ii*local_ncols + jj].speeds;
                 
                 if (!loc_obstacles[(ii - 1)*local_ncols + jj])
                 {
@@ -560,6 +565,7 @@ int main(int argc, char* argv[])
                     / (tmp_speed[0] + tmp_speed[1] + tmp_speed[2] + tmp_speed[3] + tmp_speed[4] + tmp_speed[5] + tmp_speed[6] + tmp_speed[7] + tmp_speed[8]);
                     
                     double u = u_x*u_x + u_y*u_y;
+                    loc_u += sqrt(u);
                     double local_density_mult = u * (two_c_sq);
                     double w1_loc = (w1 * (tmp_speed[0] + tmp_speed[1] + tmp_speed[2] + tmp_speed[3] + tmp_speed[4] + tmp_speed[5] + tmp_speed[6] + tmp_speed[7] + tmp_speed[8]));
                     double w2_loc = w1_loc/4.0;
@@ -591,12 +597,9 @@ int main(int argc, char* argv[])
                     *(current_speed+8) = tmp_speed[8] + params.omega * ((w2_loc * (1.0 + ( u_x - u_y) * c_sq
                                                                                    + (( u_x - u_y) * ( u_x - u_y)) * (two_c_sq_c_sq)
                                                                                    - local_density_mult)) - tmp_speed[8]);
-                    loc_u += sqrt(u);
-                    //                    if(rank == size -1) {
-                    //                        printf(" %d index, %d rank, %d row, %d col : %f\n", (ii - 1)*params.nx + jj +rank*local_ncols*(local_nrows -2), rank, ii - 1, jj, sqrt(u));
-                    //                    } else {
-                    //                        printf(" %d index, %d rank, %d row, %d col : %f\n", (ii - 1)*params.nx + jj +rank*local_ncols*(local_nrows),rank, ii - 1, jj, sqrt(u));
-                    //                    }
+                    
+                    //printf(" %d index, %d rank, %d row, %d col : %f\n", (ii - 1)*params.nx + jj +rank*local_ncols*(local_nrows -2), rank, ii - 1, jj, sqrt(u));
+                    // printf(" %d index, %d rank, %d row, %d col : %f\n", (ii - 1)*params.nx + jj +rank*local_ncols*(local_nrows),rank, ii - 1, jj);
                 }else {
                     
                     *(current_speed+1) = tmp_speed[3];
@@ -617,8 +620,8 @@ int main(int argc, char* argv[])
         
         if (rank == 0)
             av_vels[tt] = tot_u / (double)(params.ny*params.nx-tot_cells);
- }
-//    
+    }
+    //
     if(rank ==0) {
         gettimeofday(&timstr, NULL);
         toc = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
@@ -634,15 +637,15 @@ int main(int argc, char* argv[])
         total_cells_grid = (t_speed*)malloc(((sizeof(t_speed)) * params.nx * params.ny));
     }
     //    //combine all the grids into total_cells_grid
-    int index;
+    
     int mult;
-    double* tot_speed;
+    float* tot_speed;
     double total;
     if (rank != size - 1) {
         for(ii = 1; ii<local_nrows+1; ii++) {
             for(jj=0;jj<local_ncols;jj++) {
                 mult = jj*NSPEEDS;
-                double* loc_speed = loc_cells[ii*local_ncols + jj].speeds;
+                float* loc_speed = loc_cells[ii*local_ncols + jj].speeds;
                 *(sendbuf+mult) = loc_speed[0];
                 *(sendbuf+mult + 1) = loc_speed[1];
                 *(sendbuf+mult + 2) = loc_speed[2];
@@ -655,11 +658,11 @@ int main(int argc, char* argv[])
                 //                printf(" %d index, %d rank, %d row, %d col : %f\n", (ii - 1)*params.nx + jj +rank*local_ncols*(local_nrows), rank, ii - 1, jj, loc_speed[0] + loc_speed[1] + loc_speed[2] + loc_speed[3] + loc_speed[4] + loc_speed[5] + loc_speed[6] + loc_speed[7] + loc_speed[8]);
                 //                total += loc_speed[0] + loc_speed[1] + loc_speed[2] + loc_speed[3] + loc_speed[4] + loc_speed[5] + loc_speed[6] + loc_speed[7] + loc_speed[8];
             }
-            MPI_Ssend(sendbuf,speed_ncols,MPI_DOUBLE,0,tag,MPI_COMM_WORLD);
+            MPI_Ssend(sendbuf,speed_ncols,MPI_FLOAT,0,tag,MPI_COMM_WORLD);
             
             if (rank == 0) {
                 for(kk = 0; kk<size-1; kk++) {
-                    MPI_Recv(recvbuf,speed_ncols,MPI_DOUBLE,kk,tag,MPI_COMM_WORLD,&status);
+                    MPI_Recv(recvbuf,speed_ncols,MPI_FLOAT,kk,tag,MPI_COMM_WORLD,&status);
                     for(jj=0;jj<local_ncols;jj++) {
                         tot_speed = total_cells_grid[(ii-1)*params.nx + jj +kk * local_nrows * local_ncols].speeds;
                         mult = jj*NSPEEDS;
@@ -686,7 +689,7 @@ int main(int argc, char* argv[])
                 for(ii = 1; ii<local_nrows+1; ii++) {
                     for(jj=0;jj<local_ncols;jj++) {
                         mult = jj*NSPEEDS;
-                        double* loc_speed = loc_cells[ii*local_ncols + jj].speeds;
+                        float* loc_speed = loc_cells[ii*local_ncols + jj].speeds;
                         *(sendbuf+mult) = loc_speed[0];
                         *(sendbuf+mult + 1) = loc_speed[1];
                         *(sendbuf+mult + 2) = loc_speed[2];
@@ -699,11 +702,11 @@ int main(int argc, char* argv[])
                         //printf(" %d index, %d rank, %d row, %d col : %f\n", (ii - 1)*params.nx + jj +rank*local_ncols*(local_nrows-difference), rank, ii - 1, jj, loc_speed[0] + loc_speed[1] + loc_speed[2] + loc_speed[3] + loc_speed[4] + loc_speed[5] + loc_speed[6] + loc_speed[7] + loc_speed[8]);
                         //                        total += loc_speed[0] + loc_speed[1] + loc_speed[2] + loc_speed[3] + loc_speed[4] + loc_speed[5] + loc_speed[6] + loc_speed[7] + loc_speed[8];
                     }
-                    MPI_Ssend(sendbuf,speed_ncols,MPI_DOUBLE,0,tag,MPI_COMM_WORLD);
+                    MPI_Ssend(sendbuf,speed_ncols,MPI_FLOAT,0,tag,MPI_COMM_WORLD);
                 }
             } else {
                 for(ii = 1; ii<local_nrows + 1 + difference; ii++) {
-                    MPI_Recv(recvbuf,speed_ncols,MPI_DOUBLE, size - 1,tag,MPI_COMM_WORLD,&status);
+                    MPI_Recv(recvbuf,speed_ncols,MPI_FLOAT, size - 1,tag,MPI_COMM_WORLD,&status);
                     for(jj=0;jj<local_ncols;jj++) {
                         tot_speed = total_cells_grid[(ii-1)*params.nx + jj + (size - 1) * local_nrows * local_ncols].speeds;
                         mult = jj*NSPEEDS;
@@ -717,7 +720,7 @@ int main(int argc, char* argv[])
                         tot_speed[7] = recvbuf[mult + 7];
                         tot_speed[8] = recvbuf[mult + 8];
                         total += tot_speed[0] + tot_speed[1] + tot_speed[2] + tot_speed[3] + tot_speed[4] + tot_speed[5] + tot_speed[6] + tot_speed[7] + tot_speed[8];
-                       // printf("%d\n", (ii-1)*params.nx + jj + (size - 1) * (local_nrows) * local_ncols);
+                        // printf("%d\n", (ii-1)*params.nx + jj + (size - 1) * (local_nrows) * local_ncols);
                     }
                     
                 }
@@ -725,12 +728,11 @@ int main(int argc, char* argv[])
         }
     }
     else {
-        int index;
         int mult;
         for(ii = 1; ii<local_nrows+1; ii++) {
             for(jj=0;jj<local_ncols;jj++) {
                 mult = jj*NSPEEDS;
-                double* loc_speed = loc_cells[ii*local_ncols + jj].speeds;
+                float* loc_speed = loc_cells[ii*local_ncols + jj].speeds;
                 *(sendbuf+mult) = loc_speed[0];
                 *(sendbuf+mult + 1) = loc_speed[1];
                 *(sendbuf+mult + 2) = loc_speed[2];
@@ -741,14 +743,14 @@ int main(int argc, char* argv[])
                 *(sendbuf+mult + 7) = loc_speed[7];
                 *(sendbuf+mult + 8) = loc_speed[8];
             }
-            MPI_Ssend(sendbuf,speed_ncols,MPI_DOUBLE,0,tag,MPI_COMM_WORLD);
+            MPI_Ssend(sendbuf,speed_ncols,MPI_FLOAT,0,tag,MPI_COMM_WORLD);
             
             if (rank == 0) {
                 for(kk = 0; kk<size; kk++) {
-                    MPI_Recv(recvbuf,speed_ncols,MPI_DOUBLE,kk,tag,MPI_COMM_WORLD,&status);
+                    MPI_Recv(recvbuf,speed_ncols,MPI_FLOAT,kk,tag,MPI_COMM_WORLD,&status);
                     for(jj=0;jj<local_ncols;jj++) {
                         //index = (ii-1)*params.nx + jj +kk*local_ncols*local_nrows;
-                        double* tot_speed = total_cells_grid[(ii-1)*params.nx + jj +kk*local_nrows * local_ncols].speeds;
+                        float* tot_speed = total_cells_grid[(ii-1)*params.nx + jj +kk*local_nrows * local_ncols].speeds;
                         mult = jj*NSPEEDS;
                         tot_speed[0] = recvbuf[mult];
                         tot_speed[1] = recvbuf[mult + 1];
@@ -764,7 +766,7 @@ int main(int argc, char* argv[])
             }
             
         }
-
+        
     }
     //printf("%f ", total);
     
@@ -786,7 +788,7 @@ int main(int argc, char* argv[])
         write_values(params, total_cells_grid, total_obstacles_grid, av_vels);
         //finalise(&params, &total_cells_grid, &total_obstacles_grid, &av_vels);
     }
-////
+    ////
     MPI_Finalize();
     return EXIT_SUCCESS;
 }
@@ -811,7 +813,7 @@ double av_velocity(const t_param params, t_speed* cells, int* obstacles)
     
     /* initialise */
     int ii;
-    int jj;
+    //int jj;
     
     for (ii = 0; ii < params.ny*params.nx; ii++)
     {
@@ -820,7 +822,7 @@ double av_velocity(const t_param params, t_speed* cells, int* obstacles)
         {
             /* local density total */
             double u_x = 0.0;
-            double* current_speed = cells[ii].speeds;
+            float* current_speed = cells[ii].speeds;
             u_x = (current_speed[1]
                    + current_speed[5]
                    + current_speed[8]
