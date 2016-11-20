@@ -158,7 +158,7 @@ int main(int argc, char* argv[])
     double *sendbuf;       /* buffer to hold values to send */
     double *recvbuf;       /* buffer to hold received values */
     
-    int not_perf = 0;
+    //int not_perf = 0;
     int* sendbuf_obs;       /* buffer to hold values to send */
     int* recvbuf_obs;       /* buffer to hold received values */
     
@@ -174,9 +174,11 @@ int main(int argc, char* argv[])
     MPI_Comm_size( MPI_COMM_WORLD, &size );
     MPI_Comm_rank( MPI_COMM_WORLD, &rank );
     
-    if(rank == 0 && params.nx % size != 0) {
-        not_perf = 1;
-    }
+//    if(rank == 0 && params.nx % size != 0) {
+//        if(params.nx % size == 0)
+//            not_perf = 1;
+//    }
+    
     /* parse the command line */
     if (argc != 3)
     {
@@ -238,8 +240,13 @@ int main(int argc, char* argv[])
     local_nrows = calc_nrows_from_rank(rank, size, params.ny);
     local_ncols = params.nx;
     
-    if(rank == 0 && not_perf == 1) {
+    if(rank == 0) {
         difference = params.nx - local_nrows*size;
+        //printf("%d %d", params.nx % size, not_perf);
+    }
+    
+    if(rank == size-1) {
+        //printf("row %d col %d", local_nrows, local_ncols);
     }
     //int local_nrows * local_ncols = local_ncols * local_nrows;
     int speed_ncols = NSPEEDS * local_ncols;
@@ -295,13 +302,13 @@ int main(int argc, char* argv[])
         }
     }
     
-    for (ii = 0; ii < local_nrows; ii++)
-    {
-        for (jj = 0; jj < local_ncols; jj++)
-        {
-            loc_obstacles[ii*local_ncols + jj] = 0;
-        }
-    }
+//    for (ii = 0; ii < local_nrows; ii++)
+//    {
+//        for (jj = 0; jj < local_ncols; jj++)
+//        {
+//            loc_obstacles[ii*local_ncols + jj] = 0;
+//        }
+//    }
     
     /* open the obstacle data file */
     fp = fopen(obstaclefile, "r");
@@ -444,7 +451,7 @@ int main(int argc, char* argv[])
                 }
             }
         }
-        
+
 
         for(jj=0;jj<local_ncols;jj++) {
             *(sendbuf+jj*NSPEEDS) = loc_cells[local_ncols + jj].speeds[0];
@@ -499,7 +506,7 @@ int main(int argc, char* argv[])
             loc_cells[jj].speeds[7] = recvbuf[jj*NSPEEDS + 7];
             loc_cells[jj].speeds[8] = recvbuf[jj*NSPEEDS + 8];
         }
-        
+
         loc_u = 0.0;
         loc_cells_count = 0;
         tot_cells = 0;
@@ -610,8 +617,8 @@ int main(int argc, char* argv[])
         
         if (rank == 0)
             av_vels[tt] = tot_u / (double)(params.ny*params.nx-tot_cells);
-    }
-    
+ }
+//    
     if(rank ==0) {
         gettimeofday(&timstr, NULL);
         toc = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
@@ -689,7 +696,7 @@ int main(int argc, char* argv[])
                         *(sendbuf+mult + 6) = loc_speed[6];
                         *(sendbuf+mult + 7) = loc_speed[7];
                         *(sendbuf+mult + 8) = loc_speed[8];
-                        //                        printf(" %d index, %d rank, %d row, %d col : %f\n", (ii - 1)*params.nx + jj +rank*local_ncols*(local_nrows-2), rank, ii - 1, jj, loc_speed[0] + loc_speed[1] + loc_speed[2] + loc_speed[3] + loc_speed[4] + loc_speed[5] + loc_speed[6] + loc_speed[7] + loc_speed[8]);
+                        //printf(" %d index, %d rank, %d row, %d col : %f\n", (ii - 1)*params.nx + jj +rank*local_ncols*(local_nrows-difference), rank, ii - 1, jj, loc_speed[0] + loc_speed[1] + loc_speed[2] + loc_speed[3] + loc_speed[4] + loc_speed[5] + loc_speed[6] + loc_speed[7] + loc_speed[8]);
                         //                        total += loc_speed[0] + loc_speed[1] + loc_speed[2] + loc_speed[3] + loc_speed[4] + loc_speed[5] + loc_speed[6] + loc_speed[7] + loc_speed[8];
                     }
                     MPI_Ssend(sendbuf,speed_ncols,MPI_DOUBLE,0,tag,MPI_COMM_WORLD);
@@ -710,13 +717,14 @@ int main(int argc, char* argv[])
                         tot_speed[7] = recvbuf[mult + 7];
                         tot_speed[8] = recvbuf[mult + 8];
                         total += tot_speed[0] + tot_speed[1] + tot_speed[2] + tot_speed[3] + tot_speed[4] + tot_speed[5] + tot_speed[6] + tot_speed[7] + tot_speed[8];
-                        // printf("%d\n", (ii-1)*params.nx + jj + (size - 1) * (local_nrows) * local_ncols);
+                       // printf("%d\n", (ii-1)*params.nx + jj + (size - 1) * (local_nrows) * local_ncols);
                     }
                     
                 }
             }
         }
-    } else {
+    }
+    else {
         int index;
         int mult;
         for(ii = 1; ii<local_nrows+1; ii++) {
@@ -778,7 +786,7 @@ int main(int argc, char* argv[])
         write_values(params, total_cells_grid, total_obstacles_grid, av_vels);
         //finalise(&params, &total_cells_grid, &total_obstacles_grid, &av_vels);
     }
-    
+////
     MPI_Finalize();
     return EXIT_SUCCESS;
 }
