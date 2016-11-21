@@ -241,8 +241,8 @@ int main(int argc, char* argv[])
     local_ncols = params.nx;
     
     if(rank == 0) {
-        difference = params.nx - local_nrows*size;
-        //printf("%d %d", params.nx % size, not_perf);
+        difference = params.ny - local_nrows*size;
+        //printf("%d", difference);
     }
     
     if(rank == size-1) {
@@ -360,12 +360,14 @@ int main(int argc, char* argv[])
     recvbuf = (float*)malloc(sizeof(float) * speed_ncols);
     
     sendbuf_obs = (int*)malloc(sizeof(int) * local_nrows * local_ncols);
+    //printf("%d ", sizeof(int) * local_nrows * local_ncols);
+    //printf("total : %d", sizeof(int) * params.nx * params.ny);
     //recvbuf_obs = (int*)malloc(sizeof(int) * local_nrows * local_ncols);
     
     int* spec_sendbuf_obs;
     
     if(rank == 0) {
-        spec_sendbuf_obs = sendbuf_obs = (int*)malloc(sizeof(int) * (local_nrows + difference) * local_ncols);
+        spec_sendbuf_obs = (int*)malloc(sizeof(int) * (local_nrows + difference) * local_ncols);
     }
     
     if(rank != size -1) {
@@ -383,7 +385,7 @@ int main(int argc, char* argv[])
         MPI_Recv(loc_obstacles,local_nrows * local_ncols,MPI_INT,0,tag,MPI_COMM_WORLD,&status);
         //printf("this is ran");
     }
-    
+
     if(size != 1) {
         if((rank == 0) || (rank == size - 1)) {
             if(rank == 0) {
@@ -399,21 +401,22 @@ int main(int argc, char* argv[])
             //printf("this is ran");
         }
     }
-    
+//
     if(size == 1) {
-        for(kk = 0; kk<size; kk++) {
+        //for(kk = 0; kk<1; kk++) {
             for(ii = 0; ii<local_nrows; ii++) {
                 for(jj = 0; jj<local_ncols; jj++) {
-                    sendbuf_obs[ii*local_ncols + jj] = total_obstacles_grid[ii*params.nx + jj + kk*local_nrows * local_ncols];
+                    sendbuf_obs[ii*local_ncols + jj] = total_obstacles_grid[ii*params.nx + jj];
                 }
             }
             
-            MPI_Send(sendbuf_obs,local_nrows * local_ncols,MPI_INT,kk,tag,MPI_COMM_WORLD);
-        }
+            MPI_Send(sendbuf_obs,local_nrows * local_ncols,MPI_INT,0,tag,MPI_COMM_WORLD);
+        //}
         
         MPI_Recv(loc_obstacles,local_nrows * local_ncols,MPI_INT,0,tag,MPI_COMM_WORLD,&status);
+        //loc_obstacles = total_obstacles_grid;
     }
-    
+////
     const float c_sq = 3.0; /* square of speed of sound */
     const float w0 = 4.0 / 9.0;  /* weighting factor */
     const float w1 = 1.0 / 9.0;  /* weighting factor */
