@@ -156,8 +156,9 @@ int main(int argc, char* argv[])
     int local_nrows;       /* number of rows apportioned to this rank */
     int local_ncols;       /* number of columns apportioned to this rank */
     float *sendbuf;       /* buffer to hold values to send */
-    float *recvbuf;       /* buffer to hold received values */
-    
+    float *recvbuf_south;       /* buffer to hold received values */
+    float *recvbuf_north;
+    float *recvbuf;
     //int not_perf = 0;
     int* sendbuf_obs;       /* buffer to hold values to send */
     //int* recvbuf_obs;       /* buffer to hold received values */
@@ -357,8 +358,9 @@ int main(int argc, char* argv[])
     left = (rank == 0) ? (rank + size - 1) : (rank - 1);
     
     sendbuf = (float*)malloc(sizeof(float) * speed_ncols);
+    recvbuf_south = (float*)malloc(sizeof(float) * speed_ncols);
+    recvbuf_north = (float*)malloc(sizeof(float) * speed_ncols);
     recvbuf = (float*)malloc(sizeof(float) * speed_ncols);
-    
     sendbuf_obs = (int*)malloc(sizeof(int) * local_nrows * local_ncols);
     //printf("%d ", sizeof(int) * local_nrows * local_ncols);
     //printf("total : %d", sizeof(int) * params.nx * params.ny);
@@ -440,94 +442,46 @@ int main(int argc, char* argv[])
             ii = local_nrows - 1;
             for (jj=0;jj<local_ncols;jj++)
             {
-                int index = ii*local_ncols + jj;
+                float* speed_arr = loc_cells[ii*local_ncols + jj].speeds;
+                //int index = ii*local_ncols + jj;
                 if (!loc_obstacles[(local_nrows-2)*local_ncols + jj]
-                    && (loc_cells[index].speeds[3] - w3) > 0.0
-                    && (loc_cells[index].speeds[6] - w4) > 0.0
-                    && (loc_cells[index].speeds[7] - w4) > 0.0)
+                    && (speed_arr[3] - w3) > 0.0
+                    && (speed_arr[6] - w4) > 0.0
+                    && (speed_arr[7] - w4) > 0.0)
                 {
-                    loc_cells[index].speeds[1] += w3;
-                    loc_cells[index].speeds[5] += w4;
-                    loc_cells[index].speeds[8] += w4;
-                    loc_cells[index].speeds[3] -= w3;
-                    loc_cells[index].speeds[6] -= w4;
-                    loc_cells[index].speeds[7] -= w4;
+                    speed_arr[1] += w3;
+                    speed_arr[5] += w4;
+                    speed_arr[8] += w4;
+                    speed_arr[3] -= w3;
+                    speed_arr[6] -= w4;
+                    speed_arr[7] -= w4;
                 }
             }
         }
-        
-        //        for(jj=0;jj<local_ncols;jj++) {
-        //            *(sendbuf+jj*NSPEEDS) = loc_cells[local_ncols + jj].speeds[0];
-        //            *(sendbuf+jj*NSPEEDS + 1) = loc_cells[local_ncols + jj].speeds[1];
-        //            *(sendbuf+jj*NSPEEDS + 2) = loc_cells[local_ncols + jj].speeds[2];
-        //            *(sendbuf+jj*NSPEEDS + 3) = loc_cells[local_ncols + jj].speeds[3];
-        //            *(sendbuf+jj*NSPEEDS + 4) = loc_cells[local_ncols + jj].speeds[4];
-        //            *(sendbuf+jj*NSPEEDS + 5) = loc_cells[local_ncols + jj].speeds[5];
-        //            *(sendbuf+jj*NSPEEDS + 6) = loc_cells[local_ncols + jj].speeds[6];
-        //            *(sendbuf+jj*NSPEEDS + 7) = loc_cells[local_ncols + jj].speeds[7];
-        //            *(sendbuf+jj*NSPEEDS + 8) = loc_cells[local_ncols + jj].speeds[8];
-        //        }
-        memcpy(sendbuf, loc_cells+local_ncols, sizeof(float) * NSPEEDS * local_ncols);
-        MPI_Sendrecv(sendbuf, speed_ncols, MPI_FLOAT, left, tag,
-                     recvbuf, speed_ncols, MPI_FLOAT, right, tag,
+
+        MPI_Sendrecv(loc_cells+local_ncols, speed_ncols, MPI_FLOAT, left, tag,
+                     loc_cells + (local_nrows+1)*local_ncols, speed_ncols, MPI_FLOAT, right, tag,
                      MPI_COMM_WORLD, &status);
-        //
-        //        for(jj=0;jj<local_ncols;jj++) {
-        //            loc_cells[(local_nrows+1)*local_ncols + jj].speeds[0] = recvbuf[jj*NSPEEDS];
-        //            loc_cells[(local_nrows+1)*local_ncols + jj].speeds[1] = recvbuf[jj*NSPEEDS + 1];
-        //            loc_cells[(local_nrows+1)*local_ncols + jj].speeds[2] = recvbuf[jj*NSPEEDS + 2];
-        //            loc_cells[(local_nrows+1)*local_ncols + jj].speeds[3] = recvbuf[jj*NSPEEDS + 3];
-        //            loc_cells[(local_nrows+1)*local_ncols + jj].speeds[4] = recvbuf[jj*NSPEEDS + 4];
-        //            loc_cells[(local_nrows+1)*local_ncols + jj].speeds[5] = recvbuf[jj*NSPEEDS + 5];
-        //            loc_cells[(local_nrows+1)*local_ncols + jj].speeds[6] = recvbuf[jj*NSPEEDS + 6];
-        //            loc_cells[(local_nrows+1)*local_ncols + jj].speeds[7] = recvbuf[jj*NSPEEDS + 7];
-        //            loc_cells[(local_nrows+1)*local_ncols + jj].speeds[8] = recvbuf[jj*NSPEEDS + 8];
-        //        }
-        memcpy(loc_cells + (local_nrows+1)*local_ncols, recvbuf, sizeof(float) * NSPEEDS * local_ncols);
-        
-        //        for(jj=0;jj<local_ncols;jj++) {
-        //            *(sendbuf+jj*NSPEEDS) = loc_cells[local_nrows*local_ncols + jj].speeds[0];
-        //            *(sendbuf+jj*NSPEEDS + 1) = loc_cells[local_nrows*local_ncols + jj].speeds[1];
-        //            *(sendbuf+jj*NSPEEDS + 2) = loc_cells[local_nrows*local_ncols + jj].speeds[2];
-        //            *(sendbuf+jj*NSPEEDS + 3) = loc_cells[local_nrows*local_ncols + jj].speeds[3];
-        //            *(sendbuf+jj*NSPEEDS + 4) = loc_cells[local_nrows*local_ncols + jj].speeds[4];
-        //            *(sendbuf+jj*NSPEEDS + 5) = loc_cells[local_nrows*local_ncols + jj].speeds[5];
-        //            *(sendbuf+jj*NSPEEDS + 6) = loc_cells[local_nrows*local_ncols + jj].speeds[6];
-        //            *(sendbuf+jj*NSPEEDS + 7) = loc_cells[local_nrows*local_ncols + jj].speeds[7];
-        //            *(sendbuf+jj*NSPEEDS + 8) = loc_cells[local_nrows*local_ncols + jj].speeds[8];
-        //        }
-        memcpy(sendbuf, loc_cells+local_nrows*local_ncols, sizeof(float) * NSPEEDS * local_ncols);
-        MPI_Sendrecv(sendbuf, speed_ncols, MPI_FLOAT, right, tag,
-                     recvbuf, speed_ncols, MPI_FLOAT, left, tag,
+
+        MPI_Sendrecv(loc_cells+local_nrows*local_ncols, speed_ncols, MPI_FLOAT, right, tag,
+                     loc_cells, speed_ncols, MPI_FLOAT, left, tag,
                      MPI_COMM_WORLD, &status);
-        
-        //        for(jj=0;jj<local_ncols;jj++) {
-        //            loc_cells[jj].speeds[0] = recvbuf[jj*NSPEEDS];
-        //            loc_cells[jj].speeds[1] = recvbuf[jj*NSPEEDS + 1];
-        //            loc_cells[jj].speeds[2] = recvbuf[jj*NSPEEDS + 2];
-        //            loc_cells[jj].speeds[3] = recvbuf[jj*NSPEEDS + 3];
-        //            loc_cells[jj].speeds[4] = recvbuf[jj*NSPEEDS + 4];
-        //            loc_cells[jj].speeds[5] = recvbuf[jj*NSPEEDS + 5];
-        //            loc_cells[jj].speeds[6] = recvbuf[jj*NSPEEDS + 6];
-        //            loc_cells[jj].speeds[7] = recvbuf[jj*NSPEEDS + 7];
-        //            loc_cells[jj].speeds[8] = recvbuf[jj*NSPEEDS + 8];
-        //        }
-        
-        memcpy(loc_cells, recvbuf, sizeof(float) * NSPEEDS * local_ncols);
+
         
         loc_u = 0.0;
         loc_cells_count = 0;
         tot_cells = 0;
         tot_u = 0.0;
         
-        for (ii = 1; ii<local_nrows+1; ii++){
+        for (ii = 1; ii<local_nrows + 1; ii++){
             for(jj=0;jj<local_ncols;jj++) {
-                float* tmp_speed = loc_tmp_cells[ii*local_ncols + jj].speeds;
                 
                 int y_n = ii + 1;
                 int x_e = (jj == local_ncols -1) ? 0 : (jj + 1);
                 int y_s = ii - 1;
                 int x_w = (jj == 0) ? (jj + local_ncols - 1) : (jj - 1);;
+                
+                float* tmp_speed = loc_tmp_cells[ii*local_ncols + jj].speeds;
                 
                 tmp_speed[0] = loc_cells[ii*local_ncols + jj].speeds[0];
                 tmp_speed[1] = loc_cells[ii*local_ncols + x_w].speeds[1];
@@ -541,8 +495,7 @@ int main(int argc, char* argv[])
                 
             }
         }
-        
-        
+
         for (ii = 1; ii<local_nrows + 1; ii++){
             for(jj=0;jj<local_ncols;jj++) {
                 
