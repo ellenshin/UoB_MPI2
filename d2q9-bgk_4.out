@@ -1,0 +1,11 @@
+Running on host node31-030
+Time is Tue Nov 22 19:22:28 GMT 2016
+Directory is /panfs/panasas01/intl/hs16844/UoB-HPC-LBM-2016
+PBS job ID is 5152588.master.cm.cluster
+This jobs runs on the following machines:
+node31-030 node31-037 node31-036 node31-031
+==done==
+Reynolds number:		3.376403122240E+00
+Elapsed time:			17.302415 (s)
+Elapsed user CPU time:		16.780448 (s)
+Elapsed system CPU time:	0.547916 (s)

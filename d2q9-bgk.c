@@ -99,7 +99,7 @@ int propagate(const t_param params, t_speed* cells, t_speed* tmp_cells);
 int rebound(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles);
 double collision(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles);
 int write_values(const t_param params, t_speed* cells, int* obstacles, double* av_vels);
-int calc_nrows_from_rank(int rank, int size, int rows);
+int calc_nrows_from_rank(int rank, int size, int rows, int* not_perf);
 
 /* finalise, including freeing up allocated memory */
 int finalise(const t_param* params, t_speed** cells_ptr,
@@ -159,10 +159,13 @@ int main(int argc, char* argv[])
     float *recvbuf_south;       /* buffer to hold received values */
     float *recvbuf_north;
     float *recvbuf;
-    //int not_perf = 0;
+    int not_perf = 0;
     int* sendbuf_obs;       /* buffer to hold values to send */
     //int* recvbuf_obs;       /* buffer to hold received values */
+    //int new_ny;
+    //int new_nx;
     
+    int remainder;
     int difference = 0;
     //double **tmp_u;            /* local temperature grid at time t - 1 */
     //t_speed **tmp_w;            /* local temperature grid at time t     */
@@ -238,14 +241,20 @@ int main(int argc, char* argv[])
     /* and close up the file */
     fclose(fp);
     
-    local_nrows = calc_nrows_from_rank(rank, size, params.ny);
+    local_nrows = calc_nrows_from_rank(rank, size, params.ny, &not_perf);
     local_ncols = params.nx;
     
     if(rank == 0) {
-        difference = params.ny - local_nrows*size;
+        //difference = params.ny - local_nrows*size;
         //printf("%d", difference);
+        if(params.ny % size != 0) {
+            difference = 1;
+            //remainder = params.ny % size;
+        }
     }
+    remainder = params.ny % size;
     
+    //printf("remainder: %d ", remainder);
     if(rank == size-1) {
         //printf("row %d col %d", local_nrows, local_ncols);
     }
@@ -372,9 +381,9 @@ int main(int argc, char* argv[])
         spec_sendbuf_obs = (int*)malloc(sizeof(int) * (local_nrows + difference) * local_ncols);
     }
     
-    if(rank != size -1) {
+    if(not_perf != 1) {
         if(rank == 0) {
-            for(kk = 0; kk<size - 1; kk++) {
+            for(kk = 0; kk<size - remainder; kk++) {
                 for(ii = 0; ii<local_nrows; ii++) {
                     for(jj = 0; jj<local_ncols; jj++) {
                         sendbuf_obs[ii*local_ncols + jj] = total_obstacles_grid[ii*params.nx + jj + kk*local_nrows * local_ncols];
@@ -385,40 +394,40 @@ int main(int argc, char* argv[])
             }
         }
         MPI_Recv(loc_obstacles,local_nrows * local_ncols,MPI_INT,0,tag,MPI_COMM_WORLD,&status);
-        //printf("this is ran");
+        //printf("this is ran by rank %d\n", rank);
     }
-
-    if(size != 1) {
-        if((rank == 0) || (rank == size - 1)) {
+    //
+    if(size != 1 && remainder > 0) {
+        if((rank == 0) || (not_perf == 1)) {
             if(rank == 0) {
-                for(ii = 0; ii<local_nrows + difference; ii++) {
-                    for(jj = 0; jj<local_ncols; jj++) {
-                        spec_sendbuf_obs[ii*local_ncols + jj] = total_obstacles_grid[ii*params.nx + jj + (size - 1)*local_nrows * local_ncols];
+                for(kk = size - remainder; kk<size; kk++) {
+                    for(ii = 0; ii<local_nrows + difference; ii++) {
+                        for(jj = 0; jj<local_ncols; jj++) {
+                            spec_sendbuf_obs[ii*local_ncols + jj] = total_obstacles_grid[ii*params.nx + jj + kk*local_nrows * local_ncols];
+                        }
                     }
+                    MPI_Send(spec_sendbuf_obs,(local_nrows + difference) * local_ncols,MPI_INT,kk,tag,MPI_COMM_WORLD);
                 }
-                MPI_Send(spec_sendbuf_obs,(local_nrows + difference) * local_ncols,MPI_INT,size - 1,tag,MPI_COMM_WORLD);
-            } else if (rank == size - 1) {
+            } else if (not_perf == 1) {
                 MPI_Recv(loc_obstacles,local_nrows * local_ncols,MPI_INT,0,tag,MPI_COMM_WORLD,&status);
             }
             //printf("this is ran");
         }
     }
-//
+    
     if(size == 1) {
         //for(kk = 0; kk<1; kk++) {
-            for(ii = 0; ii<local_nrows; ii++) {
-                for(jj = 0; jj<local_ncols; jj++) {
-                    sendbuf_obs[ii*local_ncols + jj] = total_obstacles_grid[ii*params.nx + jj];
-                }
+        for(ii = 0; ii<local_nrows; ii++) {
+            for(jj = 0; jj<local_ncols; jj++) {
+                sendbuf_obs[ii*local_ncols + jj] = total_obstacles_grid[ii*params.nx + jj];
             }
-            
-            MPI_Send(sendbuf_obs,local_nrows * local_ncols,MPI_INT,0,tag,MPI_COMM_WORLD);
-        //}
+        }
         
+        MPI_Send(sendbuf_obs,local_nrows * local_ncols,MPI_INT,0,tag,MPI_COMM_WORLD);
         MPI_Recv(loc_obstacles,local_nrows * local_ncols,MPI_INT,0,tag,MPI_COMM_WORLD,&status);
-        //loc_obstacles = total_obstacles_grid;
+        
     }
-////
+    //////
     const float c_sq = 3.0; /* square of speed of sound */
     const float w0 = 4.0 / 9.0;  /* weighting factor */
     const float w1 = 1.0 / 9.0;  /* weighting factor */
@@ -458,15 +467,15 @@ int main(int argc, char* argv[])
                 }
             }
         }
-
+        
         MPI_Sendrecv(loc_cells+local_ncols, speed_ncols, MPI_FLOAT, left, tag,
                      loc_cells + (local_nrows+1)*local_ncols, speed_ncols, MPI_FLOAT, right, tag,
                      MPI_COMM_WORLD, &status);
-
+        
         MPI_Sendrecv(loc_cells+local_nrows*local_ncols, speed_ncols, MPI_FLOAT, right, tag,
                      loc_cells, speed_ncols, MPI_FLOAT, left, tag,
                      MPI_COMM_WORLD, &status);
-
+        
         
         loc_u = 0.0;
         loc_cells_count = 0;
@@ -495,7 +504,7 @@ int main(int argc, char* argv[])
                 
             }
         }
-
+        
         for (ii = 1; ii<local_nrows + 1; ii++){
             for(jj=0;jj<local_ncols;jj++) {
                 
@@ -593,11 +602,11 @@ int main(int argc, char* argv[])
         total_cells_grid = (t_speed*)malloc(((sizeof(t_speed)) * params.nx * params.ny));
     }
     //    //combine all the grids into total_cells_grid
-    
+    //
     int mult;
     float* tot_speed;
     double total;
-    if (rank != size - 1) {
+    if (not_perf != 1) {
         for(ii = 1; ii<local_nrows+1; ii++) {
             for(jj=0;jj<local_ncols;jj++) {
                 mult = jj*NSPEEDS;
@@ -617,7 +626,7 @@ int main(int argc, char* argv[])
             MPI_Ssend(sendbuf,speed_ncols,MPI_FLOAT,0,tag,MPI_COMM_WORLD);
             
             if (rank == 0) {
-                for(kk = 0; kk<size-1; kk++) {
+                for(kk = 0; kk<size-remainder; kk++) {
                     MPI_Recv(recvbuf,speed_ncols,MPI_FLOAT,kk,tag,MPI_COMM_WORLD,&status);
                     for(jj=0;jj<local_ncols;jj++) {
                         tot_speed = total_cells_grid[(ii-1)*params.nx + jj +kk * local_nrows * local_ncols].speeds;
@@ -631,7 +640,7 @@ int main(int argc, char* argv[])
                         tot_speed[6] = recvbuf[mult + 6];
                         tot_speed[7] = recvbuf[mult + 7];
                         tot_speed[8] = recvbuf[mult + 8];
-                        total += tot_speed[0] + tot_speed[1] + tot_speed[2] + tot_speed[3] + tot_speed[4] + tot_speed[5] + tot_speed[6] + tot_speed[7] + tot_speed[8];
+                        //total += tot_speed[0] + tot_speed[1] + tot_speed[2] + tot_speed[3] + tot_speed[4] + tot_speed[5] + tot_speed[6] + tot_speed[7] + tot_speed[8];
                         //printf("%d\n", (ii-1)*params.nx + jj + kk * local_nrows * local_ncols);
                     }
                 }
@@ -639,9 +648,9 @@ int main(int argc, char* argv[])
             
         }
     }
-    if (size != 1) {
-        if ((rank == size - 1) || (rank == 0)) {
-            if (rank == size - 1) {
+    if (size != 1 && remainder > 0) {
+        if ((not_perf == 1) || (rank == 0)) {
+            if (not_perf == 1) {
                 for(ii = 1; ii<local_nrows+1; ii++) {
                     for(jj=0;jj<local_ncols;jj++) {
                         mult = jj*NSPEEDS;
@@ -659,31 +668,34 @@ int main(int argc, char* argv[])
                         //                        total += loc_speed[0] + loc_speed[1] + loc_speed[2] + loc_speed[3] + loc_speed[4] + loc_speed[5] + loc_speed[6] + loc_speed[7] + loc_speed[8];
                     }
                     MPI_Ssend(sendbuf,speed_ncols,MPI_FLOAT,0,tag,MPI_COMM_WORLD);
+                    //printf("this is ran by rank %d \n", rank);
                 }
             } else {
                 for(ii = 1; ii<local_nrows + 1 + difference; ii++) {
-                    MPI_Recv(recvbuf,speed_ncols,MPI_FLOAT, size - 1,tag,MPI_COMM_WORLD,&status);
-                    for(jj=0;jj<local_ncols;jj++) {
-                        tot_speed = total_cells_grid[(ii-1)*params.nx + jj + (size - 1) * local_nrows * local_ncols].speeds;
-                        mult = jj*NSPEEDS;
-                        tot_speed[0] = recvbuf[mult];
-                        tot_speed[1] = recvbuf[mult + 1];
-                        tot_speed[2] = recvbuf[mult + 2];
-                        tot_speed[3] = recvbuf[mult + 3];
-                        tot_speed[4] = recvbuf[mult + 4];
-                        tot_speed[5] = recvbuf[mult + 5];
-                        tot_speed[6] = recvbuf[mult + 6];
-                        tot_speed[7] = recvbuf[mult + 7];
-                        tot_speed[8] = recvbuf[mult + 8];
-                        total += tot_speed[0] + tot_speed[1] + tot_speed[2] + tot_speed[3] + tot_speed[4] + tot_speed[5] + tot_speed[6] + tot_speed[7] + tot_speed[8];
-                        // printf("%d\n", (ii-1)*params.nx + jj + (size - 1) * (local_nrows) * local_ncols);
+                    for(kk = size - remainder; kk<size; kk++) {
+                        MPI_Recv(recvbuf,speed_ncols,MPI_FLOAT, kk,tag,MPI_COMM_WORLD,&status);
+                        for(jj=0;jj<local_ncols;jj++) {
+                            tot_speed = total_cells_grid[(ii-1)*params.nx + jj + (size - remainder) * local_nrows * local_ncols + ( kk- (size - remainder))*(local_nrows + difference) * local_ncols].speeds;
+                            mult = jj*NSPEEDS;
+                            tot_speed[0] = recvbuf[mult];
+                            tot_speed[1] = recvbuf[mult + 1];
+                            tot_speed[2] = recvbuf[mult + 2];
+                            tot_speed[3] = recvbuf[mult + 3];
+                            tot_speed[4] = recvbuf[mult + 4];
+                            tot_speed[5] = recvbuf[mult + 5];
+                            tot_speed[6] = recvbuf[mult + 6];
+                            tot_speed[7] = recvbuf[mult + 7];
+                            tot_speed[8] = recvbuf[mult + 8];
+                            //total += tot_speed[0] + tot_speed[1] + tot_speed[2] + tot_speed[3] + tot_speed[4] + tot_speed[5] + tot_speed[6] + tot_speed[7] + tot_speed[8];
+                            //printf("%d\n", (ii-1)*params.nx + jj + kk * local_nrows * local_ncols + ( kk- (size - remainder))*(local_nrows + difference) * local_ncols);
+                        }
+                        
                     }
-                    
                 }
             }
         }
     }
-    else {
+    else if (size == 1){
         int mult;
         for(ii = 1; ii<local_nrows+1; ii++) {
             for(jj=0;jj<local_ncols;jj++) {
@@ -703,7 +715,7 @@ int main(int argc, char* argv[])
             
             if (rank == 0) {
                 for(kk = 0; kk<size; kk++) {
-                    MPI_Recv(recvbuf,speed_ncols,MPI_FLOAT,kk,tag,MPI_COMM_WORLD,&status);
+                    MPI_Recv(recvbuf,speed_ncols,MPI_FLOAT,0,tag,MPI_COMM_WORLD,&status);
                     for(jj=0;jj<local_ncols;jj++) {
                         //index = (ii-1)*params.nx + jj +kk*local_ncols*local_nrows;
                         float* tot_speed = total_cells_grid[(ii-1)*params.nx + jj +kk*local_nrows * local_ncols].speeds;
@@ -749,14 +761,21 @@ int main(int argc, char* argv[])
     return EXIT_SUCCESS;
 }
 
-int calc_nrows_from_rank(int rank, int size, int rows)
+int calc_nrows_from_rank(int rank, int size, int rows, int* not_perf)
 {
     int nrows;
+    int remainder = rows % size;
     
     nrows = rows / size;       /* integer division */
     if ((rows % size) != 0) {  /* if there is a remainder */
-        if (rank == size - 1)
-            nrows += rows % size;  /* add remainder to last rank */
+        if (rank >= (size - remainder)) {
+            nrows++;  /* add remainder to last rank */
+            *not_perf = 1;
+           // printf("%d is not perf", rank);
+        } else {
+            *not_perf = 0;
+            //printf("%d is perf", rank);
+        }
     }
     
     return nrows;

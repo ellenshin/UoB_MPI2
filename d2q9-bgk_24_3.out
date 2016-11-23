@@ -1,0 +1,12 @@
+Running on host node47-021
+Time is Wed Nov 23 00:37:32 GMT 2016
+Directory is /panfs/panasas01/intl/hs16844/UoB-HPC-LBM-2016
+PBS job ID is 5153831.master.cm.cluster
+This jobs runs on the following machines:
+node47-021 node47-023
+0 is perf==done==
+Reynolds number:		1.315681769425E+01
+Elapsed time:			44.455577 (s)
+Elapsed user CPU time:		44.097296 (s)
+Elapsed system CPU time:	0.651900 (s)
+1 is perf2 is perf3 is perf4 is perf5 is perf6 is perf7 is perf9 is not perf10 is not perf22 is not perf15 is not perf18 is not perf19 is not perf20 is not perf21 is not perf23 is not perf13 is not perf14 is not perf16 is not perf17 is not perf12 is not perf11 is not perf8 is not perf

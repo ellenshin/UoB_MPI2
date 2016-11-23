@@ -2,7 +2,7 @@
 
 #PBS -N d2q9-bgk
 #PBS -joe
-#PBS -o d2q9-bgk.out
+#PBS -o d2q9-bgk_20.out
 #PBS -q teaching
 #PBS -l epilogue=~ggdagw/epilogue.sh
 #PBS -l nodes=4:ppn=16,walltime=00:15:00
