@@ -1,0 +1,75 @@
+Running on host node31-029
+Time is Wed Nov 23 16:22:17 GMT 2016
+Directory is /panfs/panasas01/intl/hs16844/UoB-HPC-LBM-2016
+PBS job ID is 5162933.master.cm.cluster
+This jobs runs on the following machines:
+node31-029 node31-034 node31-031 node31-030
+==done==
+Reynolds number:		1.079131585040E+00
+Elapsed time:			20.981889 (s)
+Elapsed user CPU time:		18.005262 (s)
+Elapsed system CPU time:	2.502619 (s)
+[node31-029:88084] WARNING: There were 2 Windows created but not freed.
+[node31-029:88085] WARNING: There were 2 Windows created but not freed.
+[node31-029:88086] WARNING: There were 2 Windows created but not freed.
+[node31-029:88087] WARNING: There were 2 Windows created but not freed.
+[node31-029:88088] WARNING: There were 2 Windows created but not freed.
+[node31-029:88089] WARNING: There were 2 Windows created but not freed.
+[node31-029:88090] WARNING: There were 2 Windows created but not freed.
+[node31-029:88091] WARNING: There were 2 Windows created but not freed.
+[node31-029:88093] WARNING: There were 2 Windows created but not freed.
+[node31-029:88095] WARNING: There were 2 Windows created but not freed.
+[node31-029:88094] WARNING: There were 2 Windows created but not freed.
+[node31-029:88096] WARNING: There were 2 Windows created but not freed.
+[node31-029:88097] WARNING: There were 2 Windows created but not freed.
+[node31-029:88098] WARNING: There were 2 Windows created but not freed.
+[node31-029:88099] WARNING: There were 2 Windows created but not freed.
+[node31-034:37949] WARNING: There were 2 Windows created but not freed.
+[node31-031:77691] WARNING: There were 2 Windows created but not freed.
+[node31-034:37951] WARNING: There were 2 Windows created but not freed.
+[node31-030:107317] WARNING: There were 2 Windows created but not freed.
+[node31-031:77692] WARNING: There were 2 Windows created but not freed.
+[node31-034:37942] WARNING: There were 2 Windows created but not freed.
+[node31-030:107318] WARNING: There were 2 Windows created but not freed.
+[node31-031:77693] WARNING: There were 2 Windows created but not freed.
+[node31-034:37943] WARNING: There were 2 Windows created but not freed.
+[node31-030:107319] WARNING: There were 2 Windows created but not freed.
+[node31-031:77694] WARNING: There were 2 Windows created but not freed.
+[node31-034:37944] WARNING: There were 2 Windows created but not freed.
+[node31-030:107320] WARNING: There were 2 Windows created but not freed.
+[node31-031:77695] WARNING: There were 2 Windows created but not freed.
+[node31-034:37945] WARNING: There were 2 Windows created but not freed.
+[node31-030:107321] WARNING: There were 2 Windows created but not freed.
+[node31-031:77697] WARNING: There were 2 Windows created but not freed.
+[node31-034:37946] WARNING: There were 2 Windows created but not freed.
+[node31-030:107322] WARNING: There were 2 Windows created but not freed.
+[node31-031:77698] WARNING: There were 2 Windows created but not freed.
+[node31-034:37947] WARNING: There were 2 Windows created but not freed.
+[node31-030:107323] WARNING: There were 2 Windows created but not freed.
+[node31-031:77703] WARNING: There were 2 Windows created but not freed.
+[node31-034:37948] WARNING: There were 2 Windows created but not freed.
+[node31-030:107324] WARNING: There were 2 Windows created but not freed.
+[node31-031:77704] WARNING: There were 2 Windows created but not freed.
+[node31-034:37950] WARNING: There were 2 Windows created but not freed.
+[node31-030:107325] WARNING: There were 2 Windows created but not freed.
+[node31-031:77706] WARNING: There were 2 Windows created but not freed.
+[node31-034:37952] WARNING: There were 2 Windows created but not freed.
+[node31-030:107326] WARNING: There were 2 Windows created but not freed.
+[node31-031:77699] WARNING: There were 2 Windows created but not freed.
+[node31-034:37953] WARNING: There were 2 Windows created but not freed.
+[node31-030:107327] WARNING: There were 2 Windows created but not freed.
+[node31-031:77700] WARNING: There were 2 Windows created but not freed.
+[node31-034:37954] WARNING: There were 2 Windows created but not freed.
+[node31-030:107329] WARNING: There were 2 Windows created but not freed.
+[node31-031:77701] WARNING: There were 2 Windows created but not freed.
+[node31-034:37956] WARNING: There were 2 Windows created but not freed.
+[node31-030:107330] WARNING: There were 2 Windows created but not freed.
+[node31-031:77702] WARNING: There were 2 Windows created but not freed.
+[node31-034:37957] WARNING: There were 2 Windows created but not freed.
+[node31-030:107331] WARNING: There were 2 Windows created but not freed.
+[node31-031:77696] WARNING: There were 2 Windows created but not freed.
+[node31-034:37955] WARNING: There were 2 Windows created but not freed.
+[node31-030:107332] WARNING: There were 2 Windows created but not freed.
+[node31-031:77705] WARNING: There were 2 Windows created but not freed.
+[node31-030:107328] WARNING: There were 2 Windows created but not freed.
+[node31-029:88092] WARNING: There were 2 Windows created but not freed.
