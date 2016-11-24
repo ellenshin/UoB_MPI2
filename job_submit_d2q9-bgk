@@ -37,7 +37,5 @@ cat $PBS_NODEFILE > machine.file.$PBS_JOBID
 numnodes=`wc $PBS_NODEFILE | awk '{ print $1 }'`
 
 #! Run the parallel MPI executable (nodes*ppn)
-for i in {1...64}
-do
-mpirun -np $i -machinefile machine.file.$PBS_JOBID $application $options
-done
+mpirun -np $numnodes -machinefile machine.file.$PBS_JOBID $application $options
+
